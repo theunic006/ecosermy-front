@@ -1,0 +1,36 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/html2pdf-DqTjRwq0.js","assets/index-Bg5b0ur3.js","assets/index-TLGHQRsF.css","assets/jspdf.es.min-PTTFKOji.js","assets/html2canvas-BpOXscoz.js"])))=>i.map(i=>d[i]);
+import{r as g,B as n,j as t,L as D,A as F,t as $,O as N,_ as P}from"./index-Bg5b0ur3.js";import{f as S}from"./empleadoService-C80xZHTq.js";import{D as k}from"./DataTable-7RnPv0t4.js";import{f as i}from"./helpers-6JtmcFy0.js";import{u as x,w as T}from"./xlsx-5_gWIQju.js";function L(){const[r,v]=g.useState([]),[_,f]=g.useState(!1),[m,b]=g.useState(!1);g.useEffect(()=>{w()},[]);const w=async()=>{try{f(!0);const e=await S();v(e)}catch(e){n.error("Error al cargar empleados cesados"),console.error(e)}finally{f(!1)}},j=()=>{if(r.length===0){n.warning("No hay datos para exportar");return}const e=r.map((a,h)=>{var c,o;return{"N°":h+1,Código:a.codigo_trabajador||"",Apellidos:a.apellidos||"",Nombres:a.nombres||"",DNI:a.dni||"",Área:((c=a.area)==null?void 0:c.nombre)||"",Cargo:((o=a.cargo)==null?void 0:o.nombre)||"","Fecha Ingreso":a.fecha_ingreso?i(a.fecha_ingreso):"","Fecha Cese":a.fecha_cese?i(a.fecha_cese):"","Motivo de Cese":a.motivo_cese||""}}),s=x.json_to_sheet(e);s["!cols"]=[{wch:5},{wch:10},{wch:25},{wch:20},{wch:12},{wch:20},{wch:30},{wch:14},{wch:14},{wch:30}];const l=x.book_new();x.book_append_sheet(l,s,"Personal Cesado");const d=new Date().toISOString().split("T")[0];T(l,`personal_cesado_${d}.xlsx`),n.success(`${r.length} registros exportados a Excel`)},C=async()=>{if(r.length===0){n.warning("No hay datos para exportar");return}b(!0);try{const e=new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"long",year:"numeric"}),s=r.map((o,p)=>{var y,u;return`
+        <tr style="background:${p%2===0?"#fff":"#f1f5f9"};">
+          <td style="padding:5px;text-align:center;border:1px solid #ddd;">${p+1}</td>
+          <td style="padding:5px;border:1px solid #ddd;font-weight:600;color:#1d4ed8;">${o.codigo_trabajador||""}</td>
+          <td style="padding:5px;border:1px solid #ddd;font-weight:600;">${o.apellidos||""}, ${o.nombres||""}</td>
+          <td style="padding:5px;text-align:center;border:1px solid #ddd;">${o.dni||""}</td>
+          <td style="padding:5px;border:1px solid #ddd;">${((y=o.area)==null?void 0:y.nombre)||"-"}</td>
+          <td style="padding:5px;border:1px solid #ddd;">${((u=o.cargo)==null?void 0:u.nombre)||"-"}</td>
+          <td style="padding:5px;text-align:center;border:1px solid #ddd;">${o.fecha_ingreso?i(o.fecha_ingreso):"-"}</td>
+          <td style="padding:5px;text-align:center;border:1px solid #ddd;font-weight:600;color:#dc2626;">${o.fecha_cese?i(o.fecha_cese):"-"}</td>
+          <td style="padding:5px;border:1px solid #ddd;">${o.motivo_cese||"-"}</td>
+        </tr>`}).join(""),l=`
+        <div style="font-family:Arial,sans-serif;padding:20px;color:#111;">
+          <div style="text-align:center;margin-bottom:18px;">
+            <div style="font-size:16pt;font-weight:bold;color:#1e3a5f;">ECOSERMY S.A.C.</div>
+            <div style="font-size:13pt;font-weight:bold;margin-top:4px;">REPORTE DE PERSONAL CESADO</div>
+            <div style="font-size:9pt;color:#555;margin-top:4px;">Generado el ${e} | Total: ${r.length} empleados</div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:8pt;">
+            <thead>
+              <tr style="background:#1e3a5f;color:#fff;">
+                <th style="padding:6px 5px;text-align:center;border:1px solid #ccc;">N°</th>
+                <th style="padding:6px 5px;text-align:left;border:1px solid #ccc;">Código</th>
+                <th style="padding:6px 5px;text-align:left;border:1px solid #ccc;">Apellidos y Nombres</th>
+                <th style="padding:6px 5px;text-align:center;border:1px solid #ccc;">DNI</th>
+                <th style="padding:6px 5px;text-align:left;border:1px solid #ccc;">Área</th>
+                <th style="padding:6px 5px;text-align:left;border:1px solid #ccc;">Cargo</th>
+                <th style="padding:6px 5px;text-align:center;border:1px solid #ccc;">F. Ingreso</th>
+                <th style="padding:6px 5px;text-align:center;border:1px solid #ccc;">F. Cese</th>
+                <th style="padding:6px 5px;text-align:left;border:1px solid #ccc;">Motivo</th>
+              </tr>
+            </thead>
+            <tbody>${s}</tbody>
+          </table>
+        </div>`,d=document.createElement("div");d.style.cssText="position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:99999;background:#fff;overflow:auto;";const a=document.createElement("div");a.style.cssText="width:1050px;margin:0 auto;background:#fff;",a.innerHTML=l,d.appendChild(a),document.body.appendChild(d),document.body.style.overflow="auto",await new Promise(o=>setTimeout(o,500));const h=(await P(async()=>{const{default:o}=await import("./html2pdf-DqTjRwq0.js").then(p=>p.h);return{default:o}},__vite__mapDeps([0,1,2,3,4]))).default,c=new Date().toISOString().split("T")[0];await h().set({margin:[8,8,8,8],filename:`personal_cesado_${c}.pdf`,image:{type:"jpeg",quality:.98},html2canvas:{scale:2,useCORS:!0,logging:!1},jsPDF:{unit:"mm",format:"a4",orientation:"landscape"},pagebreak:{mode:["css"]}}).from(a).save(),document.body.removeChild(d),n.success(`PDF generado con ${r.length} registros`)}catch(e){console.error(e),n.error("Error al generar PDF")}finally{b(!1)}},E=[{header:"Código",accessor:"codigo_trabajador",render:e=>t.jsx("span",{style:{fontWeight:600,color:"var(--accent)"},children:e.codigo_trabajador})},{header:"Apellidos y Nombres",accessor:"apellidos",render:e=>t.jsxs("div",{children:[t.jsx("span",{style:{fontWeight:600},children:e.apellidos}),t.jsxs("span",{style:{color:"var(--text-secondary)"},children:[", ",e.nombres]})]})},{header:"DNI",accessor:"dni"},{header:"Área",render:e=>{var s;return((s=e.area)==null?void 0:s.nombre)||"-"}},{header:"Cargo",render:e=>{var s;return((s=e.cargo)==null?void 0:s.nombre)||"-"}},{header:"Fecha de Ingreso",accessor:"fecha_ingreso",render:e=>i(e.fecha_ingreso)},{header:"Fecha de Cese",accessor:"fecha_cese",render:e=>t.jsx("span",{style:{fontWeight:600,color:"var(--danger)",background:"var(--danger-bg)",padding:"2px 8px",borderRadius:"12px",fontSize:"0.8rem"},children:i(e.fecha_cese)})},{header:"Motivo de Cese",accessor:"motivo_cese",render:e=>e.motivo_cese||"-"}];return _?t.jsx(D,{}):t.jsxs("div",{className:"page-container",children:[t.jsxs("div",{className:"page-header",children:[t.jsxs("div",{style:{display:"flex",alignItems:"center",gap:"12px"},children:[t.jsx(F,{size:24,style:{color:"var(--danger)"}}),t.jsxs("div",{children:[t.jsx("h2",{children:"Personal Cesado"}),t.jsxs("small",{style:{color:"var(--text-muted)"},children:[r.length," empleado",r.length!==1?"s":""," cesado",r.length!==1?"s":""]})]})]}),t.jsxs("div",{className:"page-actions",children:[t.jsxs("button",{className:"btn-secondary",onClick:j,disabled:r.length===0,title:"Exportar a Excel",children:[t.jsx($,{size:15})," Excel"]}),t.jsxs("button",{className:"btn-primary",onClick:C,disabled:m||r.length===0,style:{background:"#dc2626",borderColor:"#dc2626"},title:"Exportar a PDF",children:[t.jsx(N,{size:15})," ",m?"Generando...":"PDF"]})]})]}),t.jsx(k,{columns:E,data:r,searchable:!0,pageSize:15})]})}export{L as default};

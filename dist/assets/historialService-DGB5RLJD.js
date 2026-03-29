@@ -1,0 +1,1 @@
+import{n as t}from"./index-Bg5b0ur3.js";const e=async(s={})=>(await t.get("/historial/usuarios",{params:s})).data,i=async(s={})=>(await t.get("/historial/sistema",{params:s})).data,r=async()=>(await t.get("/historial/modulos")).data,n=async()=>(await t.get("/historial/estadisticas")).data;export{r as a,n as b,i as c,e as g};

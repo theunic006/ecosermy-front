@@ -1,0 +1,1 @@
+import{n}from"./index-Bg5b0ur3.js";const e=async(t=null)=>{const a=t?{unidad:t}:{};return(await n.get("/contratos-unidad",{params:a})).data},r=async t=>(await n.post("/contratos-unidad",t)).data,d=async(t,a)=>(await n.put(`/contratos-unidad/${t}`,a)).data,c=async t=>{await n.delete(`/contratos-unidad/${t}`)};export{r as c,c as d,e as g,d as u};
