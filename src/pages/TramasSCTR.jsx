@@ -31,11 +31,20 @@ function TramasSCTR() {
     }
   };
 
+  const parseFecha = (fecha) => {
+    if (!fecha) return null;
+    // Tomar solo la parte YYYY-MM-DD sin importar el formato que venga
+    const solo = String(fecha).substring(0, 10);
+    const [y, m, d] = solo.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  };
+
   const formatFecha = (fecha) => {
-    if (!fecha) return '';
-    const d = new Date(fecha + 'T00:00:00');
-    const dia = String(d.getDate()).padStart(2, '0');
-    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const d = parseFecha(fecha);
+    if (!d) return '';
+    const dia  = String(d.getDate()).padStart(2, '0');
+    const mes  = String(d.getMonth() + 1).padStart(2, '0');
     const anio = d.getFullYear();
     return `${dia}/${mes}/${anio}`;
   };
@@ -52,29 +61,26 @@ function TramasSCTR() {
   };
 
   const getSituacion = (emp) => {
-    const ahora    = new Date();
-    const mesActual  = ahora.getMonth();      // 0-indexed
+    const ahora      = new Date();
+    const mesActual  = ahora.getMonth();
     const anioActual = ahora.getFullYear();
 
     // 1. Ingresó este mes → Nuevo
-    if (emp.fecha_ingreso) {
-      const fechaIng = new Date(emp.fecha_ingreso + 'T00:00:00');
-      if (fechaIng.getMonth() === mesActual && fechaIng.getFullYear() === anioActual) {
-        return { texto: 'Nuevo', color: '#16a34a' };
-      }
+    const fechaIng = parseFecha(emp.fecha_ingreso);
+    if (fechaIng && fechaIng.getMonth() === mesActual && fechaIng.getFullYear() === anioActual) {
+      return { texto: 'Nuevo', color: '#16a34a' };
     }
 
-    // 2. Cesó este mes → Cesado [Mes]
-    if (emp.fecha_cese) {
-      const fechaCese = new Date(emp.fecha_cese + 'T00:00:00');
+    // 2. Tiene fecha_cese
+    const fechaCese = parseFecha(emp.fecha_cese);
+    if (fechaCese) {
       if (fechaCese.getMonth() === mesActual && fechaCese.getFullYear() === anioActual) {
         return { texto: `Cesado ${MESES[mesActual]}`, color: '#dc2626' };
       }
-      // 3. Cesó en mes anterior
       return { texto: `Cesado ${MESES[fechaCese.getMonth()]}`, color: '#dc2626' };
     }
 
-    // 4. Sin fecha de cese, trabajando desde antes → Estable
+    // 3. Sin cese → Estable
     return { texto: 'Estable', color: '' };
   };
 
