@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import { FiDownload, FiRefreshCw } from 'react-icons/fi';
-import { getEmpleadosVigentes } from '../services/empleadoService';
+import { getEmpleadosSctr } from '../services/empleadoService';
 import DataTable from '../components/common/DataTable';
 import Loading from '../components/common/Loading';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
+
+const MESES = [
+  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
+];
 
 function TramasSCTR() {
   const [empleados, setEmpleados] = useState([]);
@@ -17,7 +22,7 @@ function TramasSCTR() {
   const cargarEmpleados = async () => {
     try {
       setLoading(true);
-      const data = await getEmpleadosVigentes();
+      const data = await getEmpleadosSctr();
       setEmpleados(data);
     } catch (error) {
       toast.error('Error al cargar personal');
@@ -28,10 +33,10 @@ function TramasSCTR() {
 
   const formatFecha = (fecha) => {
     if (!fecha) return '';
-    const d = new Date(fecha);
-    const dia = String(d.getUTCDate()).padStart(2, '0');
-    const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const anio = d.getUTCFullYear();
+    const d = new Date(fecha + 'T00:00:00');
+    const dia = String(d.getDate()).padStart(2, '0');
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const anio = d.getFullYear();
     return `${dia}/${mes}/${anio}`;
   };
 
@@ -46,6 +51,33 @@ function TramasSCTR() {
     return partes.slice(1).join(' ') || '';
   };
 
+  const getSituacion = (emp) => {
+    const ahora    = new Date();
+    const mesActual  = ahora.getMonth();      // 0-indexed
+    const anioActual = ahora.getFullYear();
+
+    // 1. Ingresó este mes → Nuevo
+    if (emp.fecha_ingreso) {
+      const fechaIng = new Date(emp.fecha_ingreso + 'T00:00:00');
+      if (fechaIng.getMonth() === mesActual && fechaIng.getFullYear() === anioActual) {
+        return { texto: 'Nuevo', color: '#16a34a' };
+      }
+    }
+
+    // 2. Cesó este mes → Cesado [Mes]
+    if (emp.fecha_cese) {
+      const fechaCese = new Date(emp.fecha_cese + 'T00:00:00');
+      if (fechaCese.getMonth() === mesActual && fechaCese.getFullYear() === anioActual) {
+        return { texto: `Cesado ${MESES[mesActual]}`, color: '#dc2626' };
+      }
+      // 3. Cesó en mes anterior
+      return { texto: `Cesado ${MESES[fechaCese.getMonth()]}`, color: '#dc2626' };
+    }
+
+    // 4. Sin fecha de cese, trabajando desde antes → Estable
+    return { texto: 'Estable', color: '' };
+  };
+
   const exportarExcel = () => {
     const datos = empleados.map((emp) => ({
       TipDoc: 'DNI',
@@ -56,11 +88,13 @@ function TramasSCTR() {
       'Nombre Completo': emp.nombre_completo || '',
       Nacimiento: formatFecha(emp.fecha_nacimiento),
       Sueldo: emp.sueldo_base ? Number(emp.sueldo_base) : 0,
+      'Fecha Inicio': formatFecha(emp.fecha_ingreso),
+      'Fecha Cese': formatFecha(emp.fecha_cese),
+      Situacion: getSituacion(emp).texto,
     }));
 
     const ws = XLSX.utils.json_to_sheet(datos);
 
-    // Ajustar anchos de columnas
     ws['!cols'] = [
       { wch: 8 },   // TipDoc
       { wch: 12 },  // NumDoc
@@ -70,6 +104,9 @@ function TramasSCTR() {
       { wch: 35 },  // Nombre Completo
       { wch: 13 },  // Nacimiento
       { wch: 12 },  // Sueldo
+      { wch: 14 },  // Fecha Inicio
+      { wch: 13 },  // Fecha Cese
+      { wch: 18 },  // Situacion
     ];
 
     const wb = XLSX.utils.book_new();
@@ -97,6 +134,46 @@ function TramasSCTR() {
           ? Number(row.sueldo_base).toLocaleString('es-PE', { minimumFractionDigits: 2 })
           : '-',
       width: '110px',
+    },
+    {
+      header: 'Fecha Inicio',
+      render: (row) => formatFecha(row.fecha_ingreso),
+      width: '110px',
+    },
+    {
+      header: 'Fecha Cese',
+      render: (row) => formatFecha(row.fecha_cese) || '-',
+      width: '110px',
+    },
+    {
+      header: 'Situación',
+      render: (row) => {
+        const sit = getSituacion(row);
+        if (!sit.texto || sit.texto === 'Estable') {
+          return (
+            <span style={{ color: '#6b7280', fontSize: '0.82rem' }}>
+              {sit.texto || '—'}
+            </span>
+          );
+        }
+        return (
+          <span
+            style={{
+              background: sit.color + '18',
+              color: sit.color,
+              border: `1px solid ${sit.color}40`,
+              borderRadius: '999px',
+              padding: '2px 10px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {sit.texto}
+          </span>
+        );
+      },
+      width: '130px',
     },
   ];
 

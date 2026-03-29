@@ -10,6 +10,11 @@ export const getEmpleadosVigentes = async () => {
   return response.data;
 };
 
+export const getEmpleadosSctr = async () => {
+  const response = await api.get('/empleados-sctr');
+  return response.data;
+};
+
 export const getEmpleadosCesados = async () => {
   const response = await api.get('/empleados-cesados');
   return response.data;
