@@ -11,6 +11,9 @@ export const getContratosEmpleado = async (empleadoId) => {
   return response.data;
 };
 
+// Alias corto
+export const getHistorialEmpleado = getContratosEmpleado;
+
 export const crearContratoHistorial = async (data) => {
   const response = await api.post('/contratos-historial', data);
   return response.data;

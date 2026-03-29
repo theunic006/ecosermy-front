@@ -1,8 +1,10 @@
 ﻿import { useState, useEffect } from "react";
-import { FiUserX, FiDownload, FiFileText } from "react-icons/fi";
+import { FiUserX, FiDownload, FiFileText, FiRefreshCw } from "react-icons/fi";
 import { getEmpleadosCesados } from "../services/empleadoService";
+import { getHistorialEmpleado } from "../services/contratoHistorialService";
 import DataTable from "../components/common/DataTable";
 import Loading from "../components/common/Loading";
+import Modal from "../components/common/Modal";
 import { formatDate } from "../utils/helpers";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
@@ -11,6 +13,7 @@ function Cesados() {
   const [cesados, setCesados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [exportandoPDF, setExportandoPDF] = useState(false);
+  const [modalHistorial, setModalHistorial] = useState({ show: false, empleado: null, contratos: [], loading: false });
 
   useEffect(() => { cargarCesados(); }, []);
 
@@ -27,24 +30,40 @@ function Cesados() {
     }
   };
 
+  const verHistorial = async (emp) => {
+    setModalHistorial({ show: true, empleado: emp, contratos: [], loading: true });
+    try {
+      const data = await getHistorialEmpleado(emp.id);
+      setModalHistorial(prev => ({ ...prev, contratos: data, loading: false }));
+    } catch {
+      toast.error("Error al cargar historial");
+      setModalHistorial(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   const exportarExcel = () => {
     if (cesados.length === 0) { toast.warning("No hay datos para exportar"); return; }
     const filas = cesados.map((e, i) => ({
-      "N°":             i + 1,
-      "Código":         e.codigo_trabajador || "",
-      "Apellidos":      e.apellidos || "",
-      "Nombres":        e.nombres || "",
-      "DNI":            e.dni || "",
-      "Área":           e.area?.nombre || "",
-      "Cargo":          e.cargo?.nombre || "",
-      "Fecha Ingreso":  e.fecha_ingreso ? formatDate(e.fecha_ingreso) : "",
-      "Fecha Cese":     e.fecha_cese    ? formatDate(e.fecha_cese)    : "",
-      "Motivo de Cese": e.motivo_cese   || "",
+      "N°":              i + 1,
+      "Código":          e.codigo_trabajador || "",
+      "Apellidos":       e.apellidos || "",
+      "Nombres":         e.nombres || "",
+      "DNI":             e.dni || "",
+      "Área":            e.area?.nombre || "",
+      "Cargo":           e.cargo?.nombre || "",
+      "Tipo Contrato":   e.tipo_contrato || "",
+      "Fecha Ingreso":   e.fecha_ingreso    ? formatDate(e.fecha_ingreso)    : "",
+      "Contrato Inicio": e.contrato_inicio  ? formatDate(e.contrato_inicio)  : "",
+      "Contrato Fin":    e.contrato_fin     ? formatDate(e.contrato_fin)     : "",
+      "Fecha Cese":      e.fecha_cese       ? formatDate(e.fecha_cese)       : "",
+      "N° Contratos":    e.contratos_historial_count ?? "-",
+      "Motivo de Cese":  e.motivo_cese || "",
     }));
     const ws = XLSX.utils.json_to_sheet(filas);
     ws["!cols"] = [
       { wch: 5 }, { wch: 10 }, { wch: 25 }, { wch: 20 }, { wch: 12 },
-      { wch: 20 }, { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 30 },
+      { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 14 }, { wch: 14 },
+      { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 30 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Personal Cesado");
@@ -67,7 +86,10 @@ function Cesados() {
           <td style="padding:5px;border:1px solid #ddd;">${e.area?.nombre || "-"}</td>
           <td style="padding:5px;border:1px solid #ddd;">${e.cargo?.nombre || "-"}</td>
           <td style="padding:5px;text-align:center;border:1px solid #ddd;">${e.fecha_ingreso ? formatDate(e.fecha_ingreso) : "-"}</td>
+          <td style="padding:5px;text-align:center;border:1px solid #ddd;">${e.contrato_inicio ? formatDate(e.contrato_inicio) : "-"}</td>
+          <td style="padding:5px;text-align:center;border:1px solid #ddd;">${e.contrato_fin ? formatDate(e.contrato_fin) : "-"}</td>
           <td style="padding:5px;text-align:center;border:1px solid #ddd;font-weight:600;color:#dc2626;">${e.fecha_cese ? formatDate(e.fecha_cese) : "-"}</td>
+          <td style="padding:5px;text-align:center;border:1px solid #ddd;">${e.contratos_historial_count ?? "-"}</td>
           <td style="padding:5px;border:1px solid #ddd;">${e.motivo_cese || "-"}</td>
         </tr>`).join("");
 
@@ -78,18 +100,21 @@ function Cesados() {
             <div style="font-size:13pt;font-weight:bold;margin-top:4px;">REPORTE DE PERSONAL CESADO</div>
             <div style="font-size:9pt;color:#555;margin-top:4px;">Generado el ${fecha} | Total: ${cesados.length} empleados</div>
           </div>
-          <table style="width:100%;border-collapse:collapse;font-size:8pt;">
+          <table style="width:100%;border-collapse:collapse;font-size:7pt;">
             <thead>
               <tr style="background:#1e3a5f;color:#fff;">
-                <th style="padding:6px 5px;text-align:center;border:1px solid #ccc;">N°</th>
-                <th style="padding:6px 5px;text-align:left;border:1px solid #ccc;">Código</th>
-                <th style="padding:6px 5px;text-align:left;border:1px solid #ccc;">Apellidos y Nombres</th>
-                <th style="padding:6px 5px;text-align:center;border:1px solid #ccc;">DNI</th>
-                <th style="padding:6px 5px;text-align:left;border:1px solid #ccc;">Área</th>
-                <th style="padding:6px 5px;text-align:left;border:1px solid #ccc;">Cargo</th>
-                <th style="padding:6px 5px;text-align:center;border:1px solid #ccc;">F. Ingreso</th>
-                <th style="padding:6px 5px;text-align:center;border:1px solid #ccc;">F. Cese</th>
-                <th style="padding:6px 5px;text-align:left;border:1px solid #ccc;">Motivo</th>
+                <th style="padding:6px 3px;text-align:center;border:1px solid #ccc;">N°</th>
+                <th style="padding:6px 3px;text-align:left;border:1px solid #ccc;">Código</th>
+                <th style="padding:6px 3px;text-align:left;border:1px solid #ccc;">Apellidos y Nombres</th>
+                <th style="padding:6px 3px;text-align:center;border:1px solid #ccc;">DNI</th>
+                <th style="padding:6px 3px;text-align:left;border:1px solid #ccc;">Área</th>
+                <th style="padding:6px 3px;text-align:left;border:1px solid #ccc;">Cargo</th>
+                <th style="padding:6px 3px;text-align:center;border:1px solid #ccc;">F. Ingreso</th>
+                <th style="padding:6px 3px;text-align:center;border:1px solid #ccc;">Cont. Inicio</th>
+                <th style="padding:6px 3px;text-align:center;border:1px solid #ccc;">Cont. Fin</th>
+                <th style="padding:6px 3px;text-align:center;border:1px solid #ccc;">F. Cese</th>
+                <th style="padding:6px 3px;text-align:center;border:1px solid #ccc;">N° C.</th>
+                <th style="padding:6px 3px;text-align:left;border:1px solid #ccc;">Motivo</th>
               </tr>
             </thead>
             <tbody>${filas}</tbody>
@@ -152,6 +177,14 @@ function Cesados() {
       render: (row) => formatDate(row.fecha_ingreso),
     },
     {
+      header: "Contrato Inicio",
+      render: (row) => formatDate(row.contrato_inicio),
+    },
+    {
+      header: "Contrato Fin",
+      render: (row) => formatDate(row.contrato_fin),
+    },
+    {
       header: "Fecha de Cese",
       accessor: "fecha_cese",
       render: (row) => (
@@ -159,6 +192,19 @@ function Cesados() {
           {formatDate(row.fecha_cese)}
         </span>
       ),
+    },
+    {
+      header: "N° Cont.",
+      render: (row) => (
+        <span
+          onClick={() => verHistorial(row)}
+          style={{ cursor: "pointer", color: "#2563eb", fontWeight: 700, textDecoration: "underline", fontSize: "0.9rem" }}
+          title="Ver historial de contratos"
+        >
+          {row.contratos_historial_count ?? "-"}
+        </span>
+      ),
+      width: "80px",
     },
     {
       header: "Motivo de Cese",
@@ -193,6 +239,80 @@ function Cesados() {
       </div>
 
       <DataTable columns={columns} data={cesados} searchable pageSize={15} />
+
+      {/* Modal Historial de Contratos */}
+      {modalHistorial.show && (
+        <div className="modal-overlay" onClick={() => setModalHistorial({ show: false, empleado: null, contratos: [], loading: false })}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "750px", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+            <div className="modal-header">
+              <h3>📋 Historial de Contratos</h3>
+              <button className="btn-close" onClick={() => setModalHistorial({ show: false, empleado: null, contratos: [], loading: false })}>×</button>
+            </div>
+            <div className="modal-body" style={{ overflowY: "auto", flex: 1 }}>
+              <p style={{ fontWeight: 600, marginBottom: "12px", color: "var(--text-primary)" }}>
+                {modalHistorial.empleado?.codigo_trabajador} — {modalHistorial.empleado?.apellidos}, {modalHistorial.empleado?.nombres}
+              </p>
+              <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "16px" }}>
+                <strong>Ingreso a la empresa:</strong> {formatDate(modalHistorial.empleado?.fecha_ingreso)}
+              </p>
+
+              {modalHistorial.loading ? (
+                <div style={{ textAlign: "center", padding: "30px" }}>Cargando historial...</div>
+              ) : modalHistorial.contratos.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "30px", color: "var(--text-muted)" }}>
+                  No hay registros de contratos en el historial
+                </div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                  <thead>
+                    <tr style={{ background: "#f1f5f9", fontWeight: 700 }}>
+                      <th style={{ padding: "8px 6px", textAlign: "center", borderBottom: "2px solid #e2e8f0" }}>#</th>
+                      <th style={{ padding: "8px 6px", borderBottom: "2px solid #e2e8f0" }}>Tipo</th>
+                      <th style={{ padding: "8px 6px", textAlign: "center", borderBottom: "2px solid #e2e8f0" }}>Inicio</th>
+                      <th style={{ padding: "8px 6px", textAlign: "center", borderBottom: "2px solid #e2e8f0" }}>Fin</th>
+                      <th style={{ padding: "8px 6px", textAlign: "center", borderBottom: "2px solid #e2e8f0" }}>Cese</th>
+                      <th style={{ padding: "8px 6px", borderBottom: "2px solid #e2e8f0" }}>Cargo</th>
+                      <th style={{ padding: "8px 6px", textAlign: "right", borderBottom: "2px solid #e2e8f0" }}>Sueldo</th>
+                      <th style={{ padding: "8px 6px", textAlign: "center", borderBottom: "2px solid #e2e8f0" }}>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {modalHistorial.contratos.map((c, i) => (
+                      <tr key={c.id} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                        <td style={{ padding: "6px", textAlign: "center", borderBottom: "1px solid #e2e8f0" }}>{c.contrato_numero}</td>
+                        <td style={{ padding: "6px", borderBottom: "1px solid #e2e8f0" }}>{c.tipo_contrato || "-"}</td>
+                        <td style={{ padding: "6px", textAlign: "center", borderBottom: "1px solid #e2e8f0" }}>{formatDate(c.fecha_inicio)}</td>
+                        <td style={{ padding: "6px", textAlign: "center", borderBottom: "1px solid #e2e8f0" }}>{formatDate(c.fecha_fin)}</td>
+                        <td style={{ padding: "6px", textAlign: "center", borderBottom: "1px solid #e2e8f0", color: c.fecha_cese ? "#dc2626" : "inherit", fontWeight: c.fecha_cese ? 600 : 400 }}>
+                          {formatDate(c.fecha_cese)}
+                        </td>
+                        <td style={{ padding: "6px", borderBottom: "1px solid #e2e8f0" }}>{c.cargo || "-"}</td>
+                        <td style={{ padding: "6px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>
+                          {c.sueldo ? Number(c.sueldo).toLocaleString("es-PE", { minimumFractionDigits: 2 }) : "-"}
+                        </td>
+                        <td style={{ padding: "6px", textAlign: "center", borderBottom: "1px solid #e2e8f0" }}>
+                          <span style={{
+                            padding: "2px 8px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 600,
+                            background: c.situacion === "VIGENTE" ? "#dcfce7" : "#fee2e2",
+                            color: c.situacion === "VIGENTE" ? "#16a34a" : "#dc2626",
+                          }}>
+                            {c.situacion}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setModalHistorial({ show: false, empleado: null, contratos: [], loading: false })}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
