@@ -1271,15 +1271,17 @@ function Tareo() {
                             return;
                           }
                           const detalles = emp.extras?.horas_extra_detalles || [];
+                          const normalizarFecha = (f) => f ? String(f).substring(0, 10) : '';
+                          const normalizarHora  = (h) => h ? String(h).substring(0, 5) : '';
                           setModalHorasExtra({
                             show: true,
                             empleado: emp,
                             empIdx: empIdx,
                             detalles: detalles.length > 0
                               ? detalles.map(d => ({
-                                  fecha: d.fecha || '',
-                                  hora_inicio: d.hora_inicio || '',
-                                  hora_fin: d.hora_fin || '',
+                                  fecha: normalizarFecha(d.fecha),
+                                  hora_inicio: normalizarHora(d.hora_inicio),
+                                  hora_fin: normalizarHora(d.hora_fin),
                                   total_horas: parseFloat(d.total_horas || 0),
                                 }))
                               : [],
@@ -1794,9 +1796,9 @@ function Tareo() {
               mes: mes,
               anio: anio,
               detalles: detallesValidos.map(d => ({
-                fecha: d.fecha,
-                hora_inicio: d.hora_inicio || null,
-                hora_fin: d.hora_fin || null,
+                fecha: String(d.fecha).substring(0, 10),
+                hora_inicio: d.hora_inicio ? String(d.hora_inicio).substring(0, 5) : null,
+                hora_fin: d.hora_fin ? String(d.hora_fin).substring(0, 5) : null,
                 total_horas: parseFloat(d.total_horas) || 0,
               })),
             });
