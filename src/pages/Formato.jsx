@@ -57,8 +57,7 @@ function Formato() {
     if (!datos.length) { toast.warning('No hay datos para exportar'); return; }
 
     const mesNombre = getMesNombre(mes);
-    // Columnas a exportar (excluir nombre_afp, es solo para visualización)
-    const COLUMNAS_EXPORT = COLUMNAS.filter(c => c.key !== 'nombre_afp');
+    const COLUMNAS_EXPORT = COLUMNAS;
 
     // Estilo base
     let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"

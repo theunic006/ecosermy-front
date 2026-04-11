@@ -163,6 +163,13 @@ function EmpleadoForm({ empleado, catalogos, onSaved, onCancel }) {
       }));
     } else if (name === 'unidad') {
       setForm(prev => ({ ...prev, unidad: value, contrato_unidad_id: '' }));
+    } else if (name === 'situacion_contractual') {
+      // Al cambiar de CESADO a otro estado, limpiar fecha_cese y motivo_cese
+      if (form.situacion_contractual === 'CESADO' && value !== 'CESADO') {
+        setForm(prev => ({ ...prev, situacion_contractual: value, fecha_cese: '', motivo_cese: '' }));
+      } else {
+        setForm({ ...form, [name]: value });
+      }
     } else {
       setForm({ ...form, [name]: newValue });
     }

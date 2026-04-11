@@ -12,19 +12,18 @@ function DataTable({ columns, data, onRowClick, searchable = true, pageSize = 15
     columns.reduce((acc, col, idx) => ({ ...acc, [idx]: true }), {})
   );
 
-  // Filtrar datos
+  // Filtrar datos — busca en TODOS los registros, no solo en la página visible
   let filteredData = data;
   if (search && searchable) {
     const term = search.toLowerCase();
     if (filterFn) {
-      // Función de filtrado personalizada pasada por el padre
       filteredData = data.filter(row => filterFn(row, term));
     } else {
       filteredData = data.filter(row =>
-        columns.some(col => {
-          const value = col.accessor ? row[col.accessor] : '';
-          return String(value).toLowerCase().includes(term);
-        })
+        // Buscar en todos los valores del objeto fila
+        Object.values(row).some(val =>
+          val !== null && val !== undefined && String(val).toLowerCase().includes(term)
+        )
       );
     }
   }

@@ -20,6 +20,11 @@ export const getEmpleadosCesados = async () => {
   return response.data;
 };
 
+export const getCesadosPorMes = async () => {
+  const response = await api.get('/empleados-cesados-por-mes');
+  return response.data;
+};
+
 export const getEmpleado = async (id) => {
   const response = await api.get(`/empleados/${id}`);
   return response.data;
@@ -62,6 +67,11 @@ export const getEmpleadosInactivos = async () => {
 
 export const cesarEmpleado = async (id, data = {}) => {
   const response = await api.put(`/empleados/${id}/cesar`, data);
+  return response.data;
+};
+
+export const getHistorialCeses = async (id) => {
+  const response = await api.get(`/empleados/${id}/historial-ceses`);
   return response.data;
 };
 

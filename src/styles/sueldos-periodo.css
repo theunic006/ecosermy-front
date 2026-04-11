@@ -1,0 +1,356 @@
+/* ========================================
+   SUELDOS POR PERIODO - Estilos
+   ======================================== */
+
+.sp-container {
+  padding: 20px;
+  max-width: 100%;
+}
+
+/* Header */
+.sp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.sp-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sp-header-left h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.sp-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sp-select-anio {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #1f2937);
+  cursor: pointer;
+}
+
+.sp-count {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  background: var(--bg-secondary, #f3f4f6);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.sp-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+
+.sp-btn-export {
+  background: #059669;
+  color: white;
+}
+.sp-btn-export:hover { background: #047857; }
+
+/* Info bar */
+.sp-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #eff6ff;
+  color: #1e40af;
+  border-radius: 6px;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+  border: 1px solid #bfdbfe;
+}
+
+/* Filtros */
+.sp-filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sp-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  background: var(--bg-primary, #fff);
+  flex: 1;
+  min-width: 220px;
+  max-width: 380px;
+}
+
+.sp-search-box input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 13px;
+  background: transparent;
+  color: var(--text-primary, #1f2937);
+}
+
+.sp-clear {
+  cursor: pointer;
+  color: var(--text-secondary, #9ca3af);
+  transition: color 0.15s;
+}
+.sp-clear:hover { color: #ef4444; }
+
+.sp-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-filter-group select {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #1f2937);
+  cursor: pointer;
+}
+
+/* Estado leyenda */
+.sp-estado-leyenda {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+
+.sp-estado-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sp-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Tabla */
+.sp-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  background: var(--bg-primary, #fff);
+  max-height: calc(100vh - 310px);
+  overflow-y: auto;
+}
+
+.sp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.sp-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.sp-table thead th {
+  background: var(--bg-secondary, #f8fafc);
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-secondary, #475569);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid var(--border-color, #e2e8f0);
+}
+
+.sp-table tbody tr {
+  transition: background 0.1s;
+}
+
+.sp-table tbody tr:hover {
+  background: var(--hover-bg, #f8fafc);
+}
+
+.sp-table tbody tr:nth-child(even) {
+  background: var(--bg-alt, #fafafa);
+}
+.sp-table tbody tr:nth-child(even):hover {
+  background: var(--hover-bg, #f1f5f9);
+}
+
+.sp-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color, #f1f5f9);
+  color: var(--text-primary, #1e293b);
+}
+
+/* Columnas fijas */
+.sp-th-num, .sp-td-num { width: 40px; text-align: center; color: #94a3b8; }
+.sp-th-dni, .sp-td-dni { width: 90px; font-family: 'Courier New', monospace; font-weight: 500; }
+.sp-th-nombre, .sp-td-nombre { min-width: 220px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.sp-td-area { max-width: 140px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.sp-td-cargo { max-width: 160px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+
+/* Columnas de sueldo */
+.sp-th-sueldo {
+  text-align: center;
+  min-width: 110px;
+}
+
+.sp-td-sueldo {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  padding: 6px 10px;
+  position: relative;
+}
+
+.sp-sueldo-value {
+  display: block;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* Celda editable */
+.sp-editable {
+  cursor: pointer;
+}
+
+.sp-editable:hover .sp-sueldo-value {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+/* Celda editada (marcada como cambiada) */
+.sp-changed .sp-sueldo-value {
+  background: #d1fae5;
+  color: #065f46;
+  font-weight: 600;
+  border-radius: 3px;
+}
+
+/* Celda en edición */
+.sp-editing {
+  padding: 3px 4px !important;
+}
+
+.sp-edit-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sp-input-sueldo {
+  width: 100%;
+  padding: 5px 8px;
+  border: 2px solid #3b82f6;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  text-align: right;
+  outline: none;
+  background: #eff6ff;
+  color: #1e293b;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.sp-input-sueldo::-webkit-outer-spin-button,
+.sp-input-sueldo::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Sueldo actual */
+.sp-th-actual { background: #fef3c7 !important; }
+.sp-td-actual { 
+  background: #fffbeb; 
+  font-weight: 700; 
+  color: #92400e;
+}
+
+/* Empty state */
+.sp-empty {
+  text-align: center;
+  padding: 40px !important;
+  color: var(--text-secondary, #94a3b8);
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sp-container { padding: 12px; }
+  .sp-header { flex-direction: column; align-items: flex-start; }
+  .sp-filters { flex-direction: column; }
+  .sp-search-box { max-width: 100%; }
+  .sp-filter-group { flex-wrap: wrap; }
+  .sp-estado-leyenda { flex-direction: column; gap: 6px; }
+}
+
+/* Dark mode support */
+[data-theme="dark"] .sp-info-bar {
+  background: #1e3a5f;
+  color: #93c5fd;
+  border-color: #1e3a5f;
+}
+
+[data-theme="dark"] .sp-editable:hover .sp-sueldo-value {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .sp-changed .sp-sueldo-value {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .sp-input-sueldo {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: #3b82f6;
+}
+
+[data-theme="dark"] .sp-th-actual {
+  background: #422006 !important;
+}
+
+[data-theme="dark"] .sp-td-actual {
+  background: #292211;
+  color: #fbbf24;
+}

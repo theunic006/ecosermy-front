@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   FiHome, FiUsers, FiCalendar, FiDollarSign,
-  FiFileText, FiSettings, FiUserCheck, FiBriefcase, FiChevronDown, FiAward, FiPercent, FiHash, FiTrendingUp, FiUserX, FiRefreshCw, FiLock, FiShield, FiActivity, FiServer, FiLayers, FiGlobe, FiClipboard
+  FiFileText, FiSettings, FiUserCheck, FiBriefcase, FiChevronDown, FiAward, FiPercent, FiHash, FiTrendingUp, FiUserX, FiRefreshCw, FiLock, FiShield, FiActivity, FiServer, FiLayers, FiGlobe, FiClipboard, FiDatabase
 } from 'react-icons/fi';
 
 // Cada item tiene un 'permission' que se usa para filtrar acceso
@@ -15,6 +15,8 @@ const menuItems = [
     isGroup: true,
     children: [
       { path: '/empleados', icon: FiUsers, label: 'Personal', permission: 'empleados.ver' },
+      { path: '/ficha-personal', icon: FiUserCheck, label: 'Ficha Personal', permission: 'ficha_personal.ver' },
+      { path: '/sueldos-periodo', icon: FiDollarSign, label: 'Sueldos por Periodo', permission: 'planilla.ver' },
       { path: '/cesados', icon: FiUserX, label: 'Cesados', permission: 'cesados.ver' },
       { path: '/amonestaciones', icon: FiClipboard, label: 'Amonestaciones', permission: 'empleados.ver' },
     ]
@@ -80,6 +82,7 @@ const menuItems = [
       { path: '/configuracion', icon: FiAward, label: 'Configuración', permission: 'configuracion.ver' },
       { path: '/historial-usuarios', icon: FiActivity, label: 'Historial Usuarios', permission: 'historial.ver' },
       { path: '/historial-sistema', icon: FiServer, label: 'Historial Sistema', permission: 'historial.ver' },
+      { path: '/backups', icon: FiDatabase, label: 'Backups', permission: 'configuracion.ver' },
     ]
   },
  // { path: '/reportes', icon: FiFileText, label: 'Reportes', permission: 'reportes.ver' },
@@ -100,6 +103,7 @@ const menuItems = [
       { path: '/visitante', icon: FiFileText, label: 'HHT FORMATO STAMIN', permission: null },
        { path: '/tramas', icon: FiLayers, label: 'Tramas', permission: 'tramas.ver' },
       { path: '/tramas-sctr', icon: FiLayers, label: 'Tramas SCTR', permission: 'tramas.ver' },
+      { path: '/tramas-vida-ley', icon: FiLayers, label: 'Tramas Vida Ley', permission: 'tramas.ver' },
     ]
   },
 ];

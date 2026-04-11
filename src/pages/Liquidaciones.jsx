@@ -63,7 +63,22 @@ function Liquidaciones() {
   const [otrosDescuentos, setOtrosDescuentos] = useState(0);
   const [promGratificacion, setPromGratificacion] = useState(0);
   const [otrosIngresos, setOtrosIngresos] = useState(0);
+  const [otrosIngresosDesc, setOtrosIngresosDesc] = useState('');
   const [calculando, setCalculando] = useState(false);
+  
+  // Vacaciones pendientes
+  const [vacacionesPendientes, setVacacionesPendientes] = useState([]);
+  const [incluirVacaciones, setIncluirVacaciones] = useState(true);
+  const [vacacionesDias, setVacacionesDias] = useState(0);
+  const [vacacionesDiasDisponibles, setVacacionesDiasDisponibles] = useState(0);
+  const [loadingVacaciones, setLoadingVacaciones] = useState(false);
+  
+  // Datos reales de vacaciones del empleado (como en página de vacaciones)
+  const [vacAntiguedadAnios, setVacAntiguedadAnios] = useState(0);
+  const [vacDiasAcumulados, setVacDiasAcumulados] = useState(0); // antigüedad × 30
+  const [vacTotalGozados, setVacTotalGozados] = useState(0); // editable
+  const [vacPorCobrar, setVacPorCobrar] = useState(0); // calculado: acumulados - gozados
+  const [vacJornalDiario, setVacJornalDiario] = useState(0); // para multiplicar
 
   // Detalle / vista
   const [showDetalle, setShowDetalle] = useState(false);
@@ -76,6 +91,7 @@ function Liquidaciones() {
   const [editVacMonto, setEditVacMonto] = useState(0);
   const [editOtrosDesc, setEditOtrosDesc] = useState(0);
   const [editOtrosIngresos, setEditOtrosIngresos] = useState(0);
+  const [editOtrosIngresosDesc, setEditOtrosIngresosDesc] = useState('');
   const [editObs, setEditObs] = useState('');
 
   useEffect(() => { cargarLiquidaciones(); }, [filtroEstado]);
@@ -114,6 +130,132 @@ function Liquidaciones() {
     }
   };
 
+  const cargarVacacionesPendientes = async (empleadoId) => {
+    setLoadingVacaciones(true);
+    try {
+      console.log('📊 Cargando vacaciones para empleado:', empleadoId);
+      console.log('📊 Empleado seleccionado:', empleadoSel);
+      
+      // Calcular antigüedad hasta la fecha apropiada:
+      // - Si está CESADO: usar fecha de cese real del empleado
+      // - Si está VIGENTE: usar fecha de hoy (o fecha de cese del formulario si se está liquidando)
+      const fechaIngresoEmp = empleadoSel?.fecha_ingreso;
+      if (!fechaIngresoEmp) {
+        console.warn('⚠️ Empleado sin fecha de ingreso');
+        setLoadingVacaciones(false);
+        return;
+      }
+      
+      const esCesado = empleadoSel?.situacion_contractual === 'CESADO' || empleadoSel?.situacion === 'CESADO';
+      const fechaIng = new Date(fechaIngresoEmp);
+      
+      // Determinar fecha de corte
+      let fechaCorte;
+      if (esCesado && empleadoSel?.fecha_cese) {
+        // Si ya está cesado, usar su fecha de cese real
+        fechaCorte = new Date(empleadoSel.fecha_cese);
+        console.log('✓ Empleado CESADO, usando fecha de cese real:', empleadoSel.fecha_cese);
+      } else {
+        // Si está vigente, usar fecha de hoy
+        fechaCorte = new Date();
+        console.log('✓ Empleado VIGENTE, usando fecha de hoy');
+      }
+      
+      // Calcular años completos hasta la fecha de corte
+      let antiguedadAnios = fechaCorte.getFullYear() - fechaIng.getFullYear();
+      const mesIngreso = fechaIng.getMonth();
+      const mesCorte = fechaCorte.getMonth();
+      const diaIngreso = fechaIng.getDate();
+      const diaCorte = fechaCorte.getDate();
+      
+      // Ajustar si no ha cumplido el año completo
+      if (mesCorte < mesIngreso || (mesCorte === mesIngreso && diaCorte < diaIngreso)) {
+        antiguedadAnios--;
+      }
+      
+      console.log('📊 Cálculo manual de antigüedad:', {
+        fechaIngreso: fechaIngresoEmp,
+        fechaCese: fechaCese,
+        antiguedadAnios
+      });
+      
+      const diasAcumulados = antiguedadAnios * 30;
+      
+      // Obtener gozados totales desde el endpoint de vacaciones
+      const anioActual = new Date().getFullYear();
+      let gozadosTotales = 0;
+      
+      try {
+        const respResumen = await api.get('/vacaciones/resumen', { params: { anio: anioActual } });
+        const empleados = respResumen.data?.empleados || [];
+        const empleadoData = empleados.find(emp => emp.empleado_id === empleadoId);
+        
+        if (empleadoData) {
+          gozadosTotales = empleadoData.gozados_totales || 0;
+          console.log('📊 Gozados totales desde API:', gozadosTotales);
+        }
+      } catch (err) {
+        console.warn('⚠️ No se pudieron obtener gozados totales:', err);
+      }
+      
+      const porCobrar = diasAcumulados - gozadosTotales;
+      
+      // Jornal diario = (Sueldo Base + Asignación Familiar) / 30 según ley peruana
+      const sueldoBase = empleadoSel?.sueldo_base || 0;
+      const asigFamiliar = empleadoSel?.tiene_asignacion_familiar ? (empleadoSel?.val_asig_familiar || 113) : 0;
+      const baseVacacional = sueldoBase + asigFamiliar;
+      const jornalDiario = baseVacacional / 30;
+      
+      console.log('📊 Cálculo final de vacaciones:', {
+        antiguedadAnios,
+        diasAcumulados,
+        gozadosTotales,
+        porCobrar,
+        sueldoBase,
+        asigFamiliar,
+        baseVacacional,
+        jornalDiario
+      });
+      
+      setVacAntiguedadAnios(antiguedadAnios);
+      setVacDiasAcumulados(diasAcumulados);
+      setVacTotalGozados(gozadosTotales);
+      setVacPorCobrar(Math.max(0, porCobrar));
+      setVacJornalDiario(jornalDiario);
+      
+      // Cargar periodos pendientes para detalle (opcional)
+      try {
+        let resp = await api.get(`/vacaciones-control/${empleadoId}`);
+        let periodos = [];
+        if (resp.data && Array.isArray(resp.data.vacaciones)) {
+          periodos = resp.data.vacaciones;
+        } else if (Array.isArray(resp.data)) {
+          periodos = resp.data;
+        }
+        
+        const pendientes = periodos.filter(p => ['PENDIENTE', 'PARCIAL'].includes(p.estado));
+        setVacacionesPendientes(pendientes);
+        
+        const totalDias = pendientes.reduce((sum, p) => sum + (p.dias_pendientes || 0), 0);
+        setVacacionesDiasDisponibles(totalDias);
+      } catch (err) {
+        console.warn('⚠️ No se pudieron cargar periodos pendientes:', err);
+        setVacacionesPendientes([]);
+        setVacacionesDiasDisponibles(0);
+      }
+    } catch (err) {
+      console.error('❌ Error al cargar vacaciones:', err);
+      setVacacionesPendientes([]);
+      setVacacionesDiasDisponibles(0);
+      setVacDiasAcumulados(0);
+      setVacTotalGozados(0);
+      setVacPorCobrar(0);
+      setVacJornalDiario(0);
+    } finally {
+      setLoadingVacaciones(false);
+    }
+  };
+
   const buscarEmpleados = async (term) => {
     // Si no hay término y está en modo CESADO, mostrar cesados pendientes directamente
     if (term.length < 2) {
@@ -147,6 +289,10 @@ function Liquidaciones() {
         otros_descuentos: parseFloat(otrosDescuentos) || 0,
         prom_gratificacion: parseFloat(promGratificacion) || 0,
         otros_ingresos: parseFloat(otrosIngresos) || 0,
+        otros_ingresos_descripcion: otrosIngresosDesc || '',
+        incluir_vacaciones_pendientes: incluirVacaciones,
+        // Enviar los días "Por Cobrar" = días acumulados - total gozados
+        vacaciones_dias_pendientes: incluirVacaciones ? vacPorCobrar : 0,
       });
       toast.success('Liquidación calculada');
       setShowForm(false);
@@ -222,6 +368,7 @@ function Liquidaciones() {
     setEditVacMonto(detalle.vacaciones_no_gozadas || 0);
     setEditOtrosDesc(detalle.otros_descuentos || 0);
     setEditOtrosIngresos(detalle.otros_ingresos || 0);
+    setEditOtrosIngresosDesc(detalle.otros_ingresos_descripcion || '');
     setEditObs(detalle.observaciones || '');
   };
 
@@ -232,6 +379,7 @@ function Liquidaciones() {
         vacaciones_no_gozadas: parseFloat(editVacMonto) || 0,
         otros_descuentos: parseFloat(editOtrosDesc) || 0,
         otros_ingresos: parseFloat(editOtrosIngresos) || 0,
+        otros_ingresos_descripcion: editOtrosIngresosDesc || '',
         observaciones: editObs,
       });
       toast.success('Liquidación actualizada');
@@ -252,7 +400,17 @@ function Liquidaciones() {
     setOtrosDescuentos(0);
     setPromGratificacion(0);
     setOtrosIngresos(0);
+    setOtrosIngresosDesc('');
     setSoloSituacion('CESADO');
+    setVacacionesPendientes([]);
+    setIncluirVacaciones(true);
+    setVacacionesDias(0);
+    setVacacionesDiasDisponibles(0);
+    setVacAntiguedadAnios(0);
+    setVacDiasAcumulados(0);
+    setVacTotalGozados(0);
+    setVacPorCobrar(0);
+    setVacJornalDiario(0);
     cargarCesadosPendientes();
   };
 
@@ -263,6 +421,7 @@ function Liquidaciones() {
     setBusqueda(`${emp.apellidos}, ${emp.nombres}`);
     if (emp.fecha_cese) setFechaCese(emp.fecha_cese.split('T')[0]);
     if (emp.motivo_cese) setMotivoCese(normalizarMotivo(emp.motivo_cese));
+    cargarVacacionesPendientes(emp.id); // Cargar vacaciones
     setShowForm(true);
   };
 
@@ -708,6 +867,8 @@ function Liquidaciones() {
                         if (emp.motivo_cese) {
                           setMotivoCese(normalizarMotivo(emp.motivo_cese));
                         }
+                        // Cargar vacaciones pendientes
+                        cargarVacacionesPendientes(emp.id);
                       }}
                       style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${c.borderSubtle}`, fontSize: '0.82rem' }}
                       onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(99,102,241,.06)' : '#f8fafc'}
@@ -813,10 +974,10 @@ function Liquidaciones() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={{ fontWeight: 600, fontSize: '0.82rem', color: c.textSecondary, display: 'block', marginBottom: 4 }}>
-                  Otros ingresos (S/)&nbsp;<span style={{ fontWeight: 400, fontSize: '0.75rem', color: c.textMuted }}>— Dias no pagados, bonos u otros ingresos adicionales</span>
+                  Otros ingresos (S/)&nbsp;<span style={{ fontWeight: 400, fontSize: '0.75rem', color: c.textMuted }}></span>
                 </label>
                 <input
                   type="number"
@@ -828,7 +989,173 @@ function Liquidaciones() {
                   placeholder="0.00"
                 />
               </div>
+              <div>
+                <label style={{ fontWeight: 600, fontSize: '0.82rem', color: c.textSecondary, display: 'block', marginBottom: 4 }}>
+                  Descripción del ingreso&nbsp;<span style={{ fontWeight: 400, fontSize: '0.75rem', color: c.textMuted }}>— ej: días no pagados, bono, etc.</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={otrosIngresosDesc}
+                  onChange={e => setOtrosIngresosDesc(e.target.value)}
+                  maxLength={255}
+                  style={{ width: '100%', background: isDark ? 'rgba(52,211,153,.04)' : '#f7fdf9', borderColor: isDark ? 'rgba(52,211,153,.10)' : '#bbf7d0' }}
+                  placeholder="Motivo o concepto del ingreso adicional"
+                />
+              </div>
             </div>
+
+            {/* NUEVO: Panel de Vacaciones (como página de vacaciones) */}
+            {empleadoSel && (
+              <div style={{ background: isDark ? 'rgba(168,85,247,.06)' : '#faf5ff', border: `1px solid ${isDark ? 'rgba(168,85,247,.15)' : '#e9d5ff'}`, borderRadius: 8, padding: 14, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h4 style={{ margin: 0, color: isDark ? '#c084fc' : '#7c3aed', fontSize: '0.85rem', fontWeight: 700 }}>
+                      📅 VACACIONES
+                    </h4>
+                    {loadingVacaciones && <span style={{ fontSize: '0.75rem', color: c.textMuted }}>Cargando...</span>}
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={incluirVacaciones}
+                      onChange={e => setIncluirVacaciones(e.target.checked)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span style={{ color: incluirVacaciones ? (isDark ? '#c084fc' : '#7c3aed') : c.textMuted }}>
+                      Incluir en liquidación
+                    </span>
+                  </label>
+                </div>
+
+                {/* Tabla principal con 3 columnas como página vacaciones */}
+                <div style={{ background: isDark ? 'rgba(15,22,41,.4)' : '#fff', borderRadius: 6, padding: '12px', marginBottom: 10 }}>
+                  <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: `2px solid ${c.borderSubtle}` }}>
+                        <th style={{ padding: '8px', textAlign: 'center', color: isDark ? '#a78bfa' : '#7c3aed', fontWeight: 700, background: isDark ? 'rgba(124,58,237,.08)' : '#f5f3ff' }}>
+                          Días Acumulados<br/><span style={{ fontSize: '0.65rem', fontWeight: 500 }}>(30 × año)</span>
+                        </th>
+                        <th style={{ padding: '8px', textAlign: 'center', color: isDark ? '#fbbf24' : '#d97706', fontWeight: 700, background: isDark ? 'rgba(217,119,6,.08)' : '#fef3c7' }}>
+                          Total Gozados<br/><span style={{ fontSize: '0.65rem', fontWeight: 500 }}>(informativo)</span>
+                        </th>
+                        <th style={{ padding: '8px', textAlign: 'center', color: isDark ? '#fb7185' : '#be185d', fontWeight: 700, background: isDark ? 'rgba(190,24,93,.08)' : '#fdf2f8' }}>
+                          Por Cobrar<br/><span style={{ fontSize: '0.65rem', fontWeight: 500 }}>(editable)</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: '12px', textAlign: 'center', fontSize: '1.3rem', fontWeight: 800, color: isDark ? '#a78bfa' : '#7c3aed', background: isDark ? 'rgba(124,58,237,.05)' : '#faf5ff' }}>
+                          {vacDiasAcumulados}
+                          <div style={{ fontSize: '0.65rem', fontWeight: 500, marginTop: 2, color: c.textMuted }}>
+                            {vacAntiguedadAnios} años × 30
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center', fontSize: '1.3rem', fontWeight: 800, color: isDark ? '#fbbf24' : '#d97706', background: isDark ? 'rgba(217,119,6,.05)' : '#fffbeb' }}>
+                          {vacTotalGozados}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center', background: isDark ? 'rgba(190,24,93,.05)' : '#fef2f8' }}>
+                          <input
+                            type="number"
+                            value={vacPorCobrar}
+                            onChange={e => {
+                              const nuevoPorCobrar = Math.max(0, parseInt(e.target.value) || 0);
+                              setVacPorCobrar(nuevoPorCobrar);
+                            }}
+                            min="0"
+                            max={vacDiasAcumulados}
+                            style={{
+                              width: '100px',
+                              fontSize: '1.3rem',
+                              fontWeight: 800,
+                              textAlign: 'center',
+                              padding: '6px',
+                              border: `2px solid ${isDark ? 'rgba(190,24,93,.3)' : '#fb7185'}`,
+                              borderRadius: 6,
+                              background: isDark ? 'rgba(251,113,133,.1)' : '#fff',
+                              color: isDark ? '#fb7185' : '#be185d'
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Cálculo del monto */}
+                {incluirVacaciones && vacPorCobrar > 0 && (
+                  <div style={{ background: isDark ? 'rgba(52,211,153,.06)' : '#f0fdf4', border: `1px solid ${isDark ? 'rgba(52,211,153,.15)' : '#86efac'}`, borderRadius: 6, padding: '10px 12px' }}>
+                    <div style={{ fontSize: '0.75rem', color: isDark ? '#6ee7b7' : '#15803d', fontWeight: 600, marginBottom: 4 }}>
+                      ✓ Cálculo de pago por vacaciones:
+                    </div>
+                    <div style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: isDark ? 'rgba(52,211,153,.08)' : '#dcfce7', borderRadius: 4 }}>
+                      <div>
+                        <span style={{ fontWeight: 700, color: isDark ? '#34d399' : '#059669' }}>{vacPorCobrar} días</span>
+                        <span style={{ margin: '0 6px', color: c.textMuted }}>×</span>
+                        <span style={{ fontWeight: 700, color: isDark ? '#34d399' : '#059669' }}>S/ {vacJornalDiario.toFixed(2)}</span>
+                        <span style={{ fontSize: '0.7rem', color: c.textMuted, marginLeft: 4 }}>(base vacacional / 30)</span>
+                      </div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: isDark ? '#34d399' : '#059669' }}>
+                        = S/ {(vacPorCobrar * vacJornalDiario).toFixed(2)}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: c.textMuted, marginTop: 6, fontStyle: 'italic' }}>
+                      Base vacacional: Sueldo Base + Asig. Familiar (ley peruana)
+                    </div>
+                  </div>
+                )}
+
+                {!incluirVacaciones && (
+                  <div style={{ fontSize: '0.75rem', color: c.textMuted, textAlign: 'center', padding: '8px', fontStyle: 'italic' }}>
+                    Las vacaciones no se incluirán en el cálculo de la liquidación
+                  </div>
+                )}
+
+                {/* Detalle de periodos pendientes (colapsable) */}
+                {vacacionesPendientes.length > 0 && (
+                  <details style={{ marginTop: 10 }}>
+                    <summary style={{ cursor: 'pointer', fontSize: '0.75rem', color: c.textSecondary, fontWeight: 600, padding: '6px 0' }}>
+                      Ver detalle de periodos pendientes ({vacacionesPendientes.length})
+                    </summary>
+                    <div style={{ background: isDark ? 'rgba(15,22,41,.4)' : '#fff', borderRadius: 6, padding: '8px 10px', marginTop: 6, maxHeight: 150, overflowY: 'auto' }}>
+                      <table style={{ width: '100%', fontSize: '0.72rem', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ borderBottom: `1px solid ${c.borderSubtle}` }}>
+                            <th style={{ padding: '4px 6px', textAlign: 'left', color: c.textSecondary, fontWeight: 600 }}>Año</th>
+                            <th style={{ padding: '4px 6px', textAlign: 'left', color: c.textSecondary, fontWeight: 600 }}>Periodo</th>
+                            <th style={{ padding: '4px 6px', textAlign: 'center', color: c.textSecondary, fontWeight: 600 }}>Días Pend.</th>
+                            <th style={{ padding: '4px 6px', textAlign: 'center', color: c.textSecondary, fontWeight: 600 }}>Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {vacacionesPendientes.map((p, idx) => (
+                            <tr key={idx} style={{ borderBottom: `1px solid ${c.borderSubtle}` }}>
+                              <td style={{ padding: '4px 6px', fontWeight: 600 }}>Año {p.anio_laboral}</td>
+                              <td style={{ padding: '4px 6px', fontSize: '0.68rem', color: c.textSecondary }}>
+                                {p.periodo_inicio ? new Date(p.periodo_inicio).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' }) : ''} - {p.periodo_fin ? new Date(p.periodo_fin).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' }) : ''}
+                              </td>
+                              <td style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 700, color: isDark ? '#c084fc' : '#7c3aed' }}>
+                                {p.dias_pendientes} {p.doble_pago && <span style={{ color: '#fbbf24', fontSize: '0.6rem' }}>×2</span>}
+                              </td>
+                              <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                                <span style={{ 
+                                  padding: '1px 6px', borderRadius: 3, fontSize: '0.65rem', fontWeight: 600,
+                                  background: p.estado === 'VENCIDO' ? '#fee2e2' : '#fef3c7',
+                                  color: p.estado === 'VENCIDO' ? '#dc2626' : '#b45309'
+                                }}>
+                                  {p.estado}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
 
             {/* Preview remuneración computable en tiempo real */}
             {empleadoSel && (
@@ -957,6 +1284,10 @@ function Liquidaciones() {
                           <div style={{ fontSize: '0.68rem', color: c.textMuted, marginTop: 2 }}>DÍA{detalle.tiempo_servicio_dias !== 1 ? 'S' : ''}</div>
                         </div>
                       </div>
+                      {/* Nota sobre antigüedad */}
+                      <div style={{ marginTop: 8, padding: '6px 8px', background: 'rgba(251,191,36,.15)', borderRadius: 4, fontSize: '0.68rem', color: '#fbbf24' }}>
+                        💡 Para vacaciones se usan años completos: <strong>{detalle.tiempo_servicio_anos ?? 0} años = {(detalle.tiempo_servicio_anos ?? 0) * 30} días acumulados</strong>
+                      </div>
                     </div>
                     {/* Remuneración y períodos */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -976,6 +1307,56 @@ function Liquidaciones() {
                       </div>
                     </div>
                   </div>
+
+                  {/* NUEVO: Panel de Vacaciones por Cobrar */}
+                  {detalle.incluir_vacaciones_pendientes && detalle.vacaciones_dias_disponibles > 0 && (
+                    <div style={{ background: isDark ? 'rgba(168,85,247,.08)' : '#faf5ff', border: `2px solid ${isDark ? 'rgba(168,85,247,.25)' : '#e9d5ff'}`, borderRadius: 8, padding: '12px 16px', marginBottom: 16 }}>
+                      <div style={{ fontWeight: 700, color: isDark ? '#c084fc' : '#7c3aed', marginBottom: 10, fontSize: '0.8rem', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>📅</span> VACACIONES POR COBRAR
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 10 }}>
+                        <div style={{ textAlign: 'center', background: isDark ? 'rgba(124,58,237,.08)' : '#f5f3ff', padding: '10px', borderRadius: 6 }}>
+                          <div style={{ fontSize: '0.68rem', color: c.textSecondary, marginBottom: 4 }}>Días Acumulados</div>
+                          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: isDark ? '#a78bfa' : '#7c3aed' }}>
+                            {(detalle.tiempo_servicio_anos ?? 0) * 30}
+                          </div>
+                          <div style={{ fontSize: '0.65rem', color: c.textMuted, marginTop: 2 }}>
+                            {detalle.tiempo_servicio_anos ?? 0} años × 30
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'center', background: isDark ? 'rgba(217,119,6,.08)' : '#fef3c7', padding: '10px', borderRadius: 6 }}>
+                          <div style={{ fontSize: '0.68rem', color: c.textSecondary, marginBottom: 4 }}>Total Gozados</div>
+                          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: isDark ? '#fbbf24' : '#d97706' }}>
+                            {((detalle.tiempo_servicio_anos ?? 0) * 30) - (detalle.vacaciones_dias_disponibles ?? 0)}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'center', background: isDark ? 'rgba(190,24,93,.08)' : '#fdf2f8', padding: '10px', borderRadius: 6 }}>
+                          <div style={{ fontSize: '0.68rem', color: c.textSecondary, marginBottom: 4 }}>Por Cobrar</div>
+                          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: isDark ? '#fb7185' : '#be185d' }}>
+                            {detalle.vacaciones_dias_disponibles ?? 0}
+                          </div>
+                          <div style={{ fontSize: '0.65rem', color: c.textMuted, marginTop: 2 }}>días pendientes</div>
+                        </div>
+                        <div style={{ textAlign: 'center', background: isDark ? 'rgba(52,211,153,.08)' : '#d1fae5', padding: '10px', borderRadius: 6 }}>
+                          <div style={{ fontSize: '0.68rem', color: c.textSecondary, marginBottom: 4 }}>Jornal Diario</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 800, color: isDark ? '#34d399' : '#059669' }}>
+                            S/ {((parseFloat(detalle.remuneracion_basica || 0) + parseFloat(detalle.asignacion_familiar || 0)) / 30).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ background: isDark ? 'rgba(52,211,153,.12)' : '#dcfce7', border: `1px solid ${isDark ? 'rgba(52,211,153,.25)' : '#86efac'}`, borderRadius: 6, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontSize: '0.8rem', color: isDark ? '#6ee7b7' : '#15803d' }}>
+                          <strong>{detalle.vacaciones_dias_disponibles ?? 0} días</strong> × S/ {((parseFloat(detalle.remuneracion_basica || 0) + parseFloat(detalle.asignacion_familiar || 0)) / 30).toFixed(2)} (jornal)
+                        </div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: isDark ? '#34d399' : '#059669' }}>
+                          = S/ {((detalle.vacaciones_dias_disponibles ?? 0) * ((parseFloat(detalle.remuneracion_basica || 0) + parseFloat(detalle.asignacion_familiar || 0)) / 30)).toFixed(2)}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: c.textMuted, marginTop: 8, fontStyle: 'italic', textAlign: 'center' }}>
+                        Este monto está incluido en "Vacaciones no gozadas" del desglose abajo
+                      </div>
+                    </div>
+                  )}
 
                   {/* Desglose de períodos por beneficio */}
                   <div style={{ background: isDark ? 'rgba(148,163,184,.04)' : '#f8fafc', border: `1px solid ${c.borderSubtle}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: '0.78rem' }}>
@@ -1057,6 +1438,9 @@ function Liquidaciones() {
                         <div style={{ textAlign: 'center', flex: '1 1 100px' }}>
                           <div style={{ color: c.textSecondary, fontSize: '0.68rem', marginBottom: 2 }}>OTROS INGRESOS</div>
                           <div style={{ fontWeight: 700, color: '#15803d' }}>{formatMoney(detalle.otros_ingresos)}</div>
+                          {detalle.otros_ingresos_descripcion && (
+                            <div style={{ fontSize: '0.65rem', color: c.textMuted, marginTop: 2, fontStyle: 'italic' }}>{detalle.otros_ingresos_descripcion}</div>
+                          )}
                         </div>
                       )}
                       <div style={{ textAlign: 'center', flex: '1 1 110px', borderLeft: '2px solid #86efac', paddingLeft: 8 }}>
@@ -1142,6 +1526,17 @@ function Liquidaciones() {
                             onChange={e => setEditOtrosIngresos(e.target.value)}
                             min="0" step="0.01"
                             style={{ width: '100%', background: isDark ? 'rgba(52,211,153,.06)' : '#f0fdf4', borderColor: isDark ? 'rgba(52,211,153,.15)' : '#86efac' }}
+                          />
+                        </div>
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <label style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Descripción del ingreso adicional</label>
+                          <input
+                            type="text" className="form-input"
+                            value={editOtrosIngresosDesc}
+                            onChange={e => setEditOtrosIngresosDesc(e.target.value)}
+                            maxLength={255}
+                            style={{ width: '100%' }}
+                            placeholder="Motivo o concepto del ingreso adicional"
                           />
                         </div>
                         <div>

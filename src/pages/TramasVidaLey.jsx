@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FiDownload, FiRefreshCw } from 'react-icons/fi';
-import { getEmpleadosSctr } from '../services/empleadoService';
+import { getEmpleadosVigentes } from '../services/empleadoService';
 import DataTable from '../components/common/DataTable';
 import Loading from '../components/common/Loading';
 import { toast } from 'react-toastify';
@@ -11,7 +11,7 @@ const MESES = [
   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
 ];
 
-function TramasSCTR() {
+function TramasVidaLey() {
   const [empleados, setEmpleados] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +22,7 @@ function TramasSCTR() {
   const cargarEmpleados = async () => {
     try {
       setLoading(true);
-      const data = await getEmpleadosSctr();
+      const data = await getEmpleadosVigentes();
       setEmpleados(data);
     } catch (error) {
       toast.error('Error al cargar personal');
@@ -33,7 +33,6 @@ function TramasSCTR() {
 
   const parseFecha = (fecha) => {
     if (!fecha) return null;
-    // Tomar solo la parte YYYY-MM-DD sin importar el formato que venga
     const solo = String(fecha).substring(0, 10);
     const [y, m, d] = solo.split('-').map(Number);
     if (!y || !m || !d) return null;
@@ -60,6 +59,14 @@ function TramasSCTR() {
     return partes.slice(1).join(' ') || '';
   };
 
+  const getSexo = (sexo) => {
+    if (!sexo) return '';
+    const s = String(sexo).toLowerCase();
+    if (s === 'masculino' || s === 'm') return 'M';
+    if (s === 'femenino'  || s === 'f') return 'F';
+    return sexo;
+  };
+
   const getSituacion = (emp) => {
     const ahora      = new Date();
     const mesActual  = ahora.getMonth();
@@ -82,49 +89,8 @@ function TramasSCTR() {
       return { texto: 'Estable', color: '#2563eb' };
     }
 
-    // 4. Inició antes de este mes y tiene contrato_fin → en blanco
+    // 4. Tiene contrato_fin pero no es nuevo ni cesado → en blanco
     return { texto: '', color: '' };
-  };
-
-  const exportarExcel = () => {
-    const datos = empleadosOrdenados.map((emp) => ({
-      TipDoc: 'DNI',
-      NumDoc: emp.dni || '',
-      ApePaterno: getApePaterno(emp.apellidos),
-      ApeMaterno: getApeMaterno(emp.apellidos),
-      Nombres: emp.nombres || '',
-      'Nombre Completo': emp.nombre_completo || '',
-      Nacimiento: formatFecha(emp.fecha_nacimiento),
-      Sueldo: emp.sueldo_base ? Number(emp.sueldo_base) : 0,
-      'Fecha Ingreso': formatFecha(emp.fecha_ingreso),
-      'Contrato Inicio': formatFecha(emp.contrato_inicio),
-      'Contrato Fin': formatFecha(emp.contrato_fin),
-      'Fecha Cese': formatFecha(emp.fecha_cese),
-      Situacion: getSituacion(emp).texto,
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(datos);
-
-    ws['!cols'] = [
-      { wch: 8 },   // TipDoc
-      { wch: 12 },  // NumDoc
-      { wch: 18 },  // ApePaterno
-      { wch: 18 },  // ApeMaterno
-      { wch: 20 },  // Nombres
-      { wch: 35 },  // Nombre Completo
-      { wch: 13 },  // Nacimiento
-      { wch: 12 },  // Sueldo
-      { wch: 14 },  // Fecha Ingreso
-      { wch: 15 },  // Contrato Inicio
-      { wch: 15 },  // Contrato Fin
-      { wch: 13 },  // Fecha Cese
-      { wch: 18 },  // Situacion
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Trama SCTR');
-    XLSX.writeFile(wb, 'trama_sctr.xlsx');
-    toast.success('Trama SCTR exportada correctamente');
   };
 
   const PRIORIDAD = (sit) => {
@@ -138,11 +104,67 @@ function TramasSCTR() {
     .map(emp => ({ ...emp, _situacion: getSituacion(emp).texto }))
     .sort((a, b) => PRIORIDAD(a._situacion) - PRIORIDAD(b._situacion));
 
+  const exportarExcel = () => {
+    const datos = empleadosOrdenados.map((emp) => ({
+      TipDoc: 'DNI',
+      NumDoc: emp.dni || '',
+      ApePaterno: getApePaterno(emp.apellidos),
+      ApeMaterno: getApeMaterno(emp.apellidos),
+      Nombres: emp.nombres || '',
+      NombreCompleto: `${emp.apellidos || ''} ${emp.nombres || ''}`.trim(),
+      Nacimiento: formatFecha(emp.fecha_nacimiento),
+      Sueldo: emp.sueldo_base ? Number(emp.sueldo_base) : 0,
+      TipRiesgo: emp.categoria || '',
+      LugarExposicion: emp.unidad || '',
+      Sexo: getSexo(emp.sexo),
+      'F. Ingreso': formatFecha(emp.fecha_ingreso),
+      'Cont. Inicio': formatFecha(emp.contrato_inicio),
+      'Cont. Fin': formatFecha(emp.contrato_fin),
+      'F. Cese': formatFecha(emp.fecha_cese),
+      Situacion: emp._situacion,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(datos);
+    ws['!cols'] = [
+      { wch: 8 },   // TipDoc
+      { wch: 12 },  // NumDoc
+      { wch: 18 },  // ApePaterno
+      { wch: 18 },  // ApeMaterno
+      { wch: 20 },  // Nombres
+      { wch: 35 },  // NombreCompleto
+      { wch: 13 },  // Nacimiento
+      { wch: 12 },  // Sueldo
+      { wch: 20 },  // TipRiesgo
+      { wch: 22 },  // LugarExposicion
+      { wch: 6 },   // Sexo
+      { wch: 13 },  // F. Ingreso
+      { wch: 14 },  // Cont. Inicio
+      { wch: 14 },  // Cont. Fin
+      { wch: 13 },  // F. Cese
+      { wch: 18 },  // Situacion
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Trama Vida Ley');
+    XLSX.writeFile(wb, 'trama_vida_ley.xlsx');
+    toast.success('Trama Vida Ley exportada correctamente');
+  };
+
   const columns = [
+    { header: 'TipDoc', render: () => 'DNI', width: '70px' },
     { header: 'NumDoc', accessor: 'dni', width: '110px' },
     { header: 'Ape. Paterno', render: (row) => getApePaterno(row.apellidos), width: '150px' },
     { header: 'Ape. Materno', render: (row) => getApeMaterno(row.apellidos), width: '150px' },
     { header: 'Nombres', accessor: 'nombres', width: '170px' },
+    {
+      header: 'Nombre Completo',
+      render: (row) => `${row.apellidos || ''} ${row.nombres || ''}`.trim(),
+    },
+    {
+      header: 'Nacimiento',
+      render: (row) => formatFecha(row.fecha_nacimiento),
+      width: '110px',
+    },
     {
       header: 'Sueldo',
       render: (row) =>
@@ -150,6 +172,21 @@ function TramasSCTR() {
           ? Number(row.sueldo_base).toLocaleString('es-PE', { minimumFractionDigits: 2 })
           : '-',
       width: '110px',
+    },
+    {
+      header: 'Tip. Riesgo',
+      accessor: 'categoria',
+      width: '160px',
+    },
+    {
+      header: 'Lugar Exposición',
+      accessor: 'unidad',
+      width: '160px',
+    },
+    {
+      header: 'Sexo',
+      render: (row) => getSexo(row.sexo),
+      width: '70px',
     },
     {
       header: 'F. Ingreso',
@@ -210,7 +247,7 @@ function TramasSCTR() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h2>Tramas SCTR</h2>
+        <h2>Tramas Vida Ley</h2>
         <div className="page-actions">
           <button className="btn-secondary" onClick={cargarEmpleados}>
             <FiRefreshCw size={16} /> Actualizar
@@ -233,4 +270,4 @@ function TramasSCTR() {
   );
 }
 
-export default TramasSCTR;
+export default TramasVidaLey;

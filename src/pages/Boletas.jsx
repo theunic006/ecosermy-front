@@ -461,7 +461,7 @@ function Boletas() {
                     </span>
                   )}
                   <span style={{ color: '#0891b2', fontWeight: 600, fontSize: '0.85rem' }}>
-                    Total Neto: S/ {formatMoney(totalNeto)}
+                    Total Neto: {formatMoney(totalNeto)}
                   </span>
                 </>
               )}
@@ -547,7 +547,7 @@ function Boletas() {
                             <FiLayers size={14} style={{ marginRight: 8, verticalAlign: 'middle' }} />
                             {grupo.unidad}
                             <span style={{ marginLeft: 10, fontWeight: 400, fontSize: '0.8rem', color: c.textMuted }}>
-                              ({grupo.empleados.length} empleados — Neto: S/ {formatMoney(grupo.empleados.filter(e => e.tiene_boleta).reduce((a, b) => a + parseFloat(b.neto_pagar || 0), 0))})
+                              ({grupo.empleados.length} empleados — Neto: {formatMoney(grupo.empleados.filter(e => e.tiene_boleta).reduce((a, b) => a + parseFloat(b.neto_pagar || 0), 0))})
                             </span>
                           </td>
                         </tr>
@@ -581,13 +581,13 @@ function Boletas() {
                             )}
                           </td>
                           <td style={{ textAlign: 'right', fontWeight: 600, color: '#0891b2' }}>
-                            S/ {formatMoney(emp.sueldo_base)}
+                            {formatMoney(emp.sueldo_base)}
                           </td>
                           <td style={{ textAlign: 'center', color: '#6366f1', fontWeight: 600 }}>
                             {emp.tiene_boleta ? Number(emp.dias_trabajados || 0).toFixed(1) : '-'}
                           </td>
                           <td style={{ textAlign: 'right', fontWeight: 700, color: emp.tiene_boleta ? '#059669' : c.textMuted }}>
-                            {emp.tiene_boleta ? `S/ ${formatMoney(emp.neto_pagar)}` : '-'}
+                            {emp.tiene_boleta ? formatMoney(emp.neto_pagar) : '-'}
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             {emp.tiene_boleta ? (
@@ -625,7 +625,7 @@ function Boletas() {
                         TOTAL NETO A PAGAR:
                       </td>
                       <td style={{ textAlign: 'right', padding: '10px 12px', color: '#34d399', fontSize: '1rem' }}>
-                        S/ {formatMoney(filtrados.filter(e => e.tiene_boleta).reduce((a, b) => a + parseFloat(b.neto_pagar || 0), 0))}
+                        {formatMoney(filtrados.filter(e => e.tiene_boleta).reduce((a, b) => a + parseFloat(b.neto_pagar || 0), 0))}
                       </td>
                       <td colSpan={2} />
                     </tr>

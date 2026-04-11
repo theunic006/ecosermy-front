@@ -192,6 +192,7 @@ function Tareo() {
         bono_regular: emp.bono_regular || 0,
         contrato_inicio: emp.contrato_inicio || null,
         contrato_fin: emp.contrato_fin || null,
+        situacion_contractual: emp.situacion_contractual || 'VIGENTE',
         fecha_cese: emp.fecha_cese || null,
         motivo_cese: emp.motivo_cese || null,
         asistencias: emp.dias || {},
@@ -810,13 +811,16 @@ function Tareo() {
         codigo: emp.codigo,
         apellidos: emp.nombre_completo.split(', ')[0] || emp.nombre_completo,
         nombres: emp.nombre_completo.split(', ')[1] || '',
-        cargo: emp.cargo,
+        dni: emp.dni || '',
+        unidad: emp.unidad || '',
+        cargo: emp.cargo || '',
         area: emp.area,
         turno: emp.turno,
         sueldo_base: emp.sueldo_base,
         bono_regular: emp.bono_regular || 0,
         contrato_inicio: emp.contrato_inicio || '',
         contrato_fin: emp.contrato_fin || '',
+        situacion_contractual: emp.situacion_contractual || 'VIGENTE',
         fecha_cese: emp.fecha_cese || '',
         asistencias: emp.dias || {},
         totales: emp.totales || {},
@@ -844,6 +848,9 @@ function Tareo() {
       html += '<tr>';
       html += '<th style="background:#334155;color:#fff;font-weight:bold;font-size:10pt;width:90px;">CÓDIGO</th>';
       html += '<th style="background:#334155;color:#fff;font-weight:bold;font-size:10pt;width:220px;">EMPLEADO</th>';
+      html += '<th style="background:#475569;color:#fff;font-weight:bold;width:90px;">DNI</th>';
+      html += '<th style="background:#475569;color:#fff;font-weight:bold;width:120px;">UNIDAD</th>';
+      html += '<th style="background:#475569;color:#fff;font-weight:bold;width:150px;">CARGO</th>';
       html += '<th style="background:#1d4ed8;color:#fff;font-weight:bold;width:90px;">SUELDO</th>';
       html += '<th style="background:#0891b2;color:#fff;font-weight:bold;width:90px;">BONO REGULAR</th>';
       html += '<th style="background:#059669;color:#fff;font-weight:bold;width:90px;">F. INGRESO</th>';
@@ -861,6 +868,7 @@ function Tareo() {
       html += '<th style="background:#f59e0b;color:#fff;font-weight:bold;">BONO</th>';
       html += '<th style="background:#8b5cf6;color:#fff;font-weight:bold;">VIÁTICOS</th>';
       html += '<th style="background:#06b6d4;color:#fff;font-weight:bold;">ALIMENT.</th>';
+      html += '<th style="background:#8b5cf6;color:#fff;font-weight:bold;">H. EXTRA</th>';
       // Columnas de resumen por tipo
       ORDEN_COLUMNAS_TAREO.forEach(k => {
         html += `<th style="background:${TIPOS_REGISTRO[k].color};color:#fff;font-weight:bold;">${TIPOS_REGISTRO[k].short}</th>`;
@@ -901,13 +909,16 @@ function Tareo() {
                       - (redondeoExcel === 30 ? (resumen['V'] || 0) : 0);
 
         html += '<tr>';
-        html += `<td class="emp" style="background:${emp.fecha_cese ? '#fee2e2' : '#f8fafc'};font-weight:bold;color:#1d4ed8;">${emp.codigo}</td>`;
-        html += `<td class="emp" style="background:${emp.fecha_cese ? '#fee2e2' : '#f8fafc'};font-weight:bold;${emp.fecha_cese ? 'color:#dc2626;' : ''}">${emp.apellidos}, ${emp.nombres}${emp.fecha_cese ? ' (CESADO)' : ''}</td>`;
+        html += `<td class="emp" style="background:${emp.situacion_contractual === 'CESADO' ? '#fee2e2' : '#f8fafc'};font-weight:bold;color:#1d4ed8;">${emp.codigo}</td>`;
+        html += `<td class="emp" style="background:${emp.situacion_contractual === 'CESADO' ? '#fee2e2' : '#f8fafc'};font-weight:bold;${emp.situacion_contractual === 'CESADO' ? 'color:#dc2626;' : ''}">${emp.apellidos}, ${emp.nombres}${emp.situacion_contractual === 'CESADO' ? ' (CESADO)' : ''}</td>`;
+        html += `<td class="emp" style="background:#f8fafc;">${emp.dni}</td>`;
+        html += `<td class="emp" style="background:#f8fafc;">${emp.unidad}</td>`;
+        html += `<td class="emp" style="background:#f8fafc;">${emp.cargo}</td>`;
         html += `<td class="money" style="background:#dbeafe;font-weight:bold;">${parseFloat(emp.sueldo_base || 0).toFixed(2)}</td>`;
         html += `<td class="money" style="background:#ecfeff;">${parseFloat(emp.bono_regular || 0).toFixed(2)}</td>`;
         html += `<td style="background:#f0fdf4;">${emp.contrato_inicio || '-'}</td>`;
         html += `<td style="background:#fffbeb;">${emp.contrato_fin || '-'}</td>`;
-        html += `<td style="background:${emp.fecha_cese ? '#fee2e2;color:#dc2626;font-weight:bold' : '#fafafa'};">${emp.fecha_cese || '-'}</td>`;
+        html += `<td style="background:${emp.situacion_contractual === 'CESADO' ? '#fee2e2;color:#dc2626;font-weight:bold' : '#fafafa'};">${emp.fecha_cese || '-'}</td>`;
         
         // Celdas de días con colores
         diasArray.forEach(dia => {
@@ -923,6 +934,7 @@ function Tareo() {
         html += `<td class="money" style="background:#fffbeb;">${bono.toFixed(2)}</td>`;
         html += `<td class="money" style="background:#f5f3ff;">${viaticos.toFixed(2)}</td>`;
         html += `<td class="money" style="background:#ecfeff;">${alimentacion.toFixed(2)}</td>`;
+        html += `<td class="num" style="background:#f3e8ff;">${parseFloat(emp.extras?.hora_extra_total || 0).toFixed(2)}</td>`;
         
         // Columnas de resumen por tipo
         ORDEN_COLUMNAS_TAREO.forEach(key => {
@@ -1179,7 +1191,8 @@ function Tareo() {
                   return (
                     <tr key={emp.empleado_id}>
                       {(() => {
-                        const tieneCeseEsteMes = emp.fecha_cese && (() => {
+                        const esCesado = emp.situacion_contractual === 'CESADO';
+                        const tieneCeseEsteMes = esCesado && emp.fecha_cese && (() => {
                           const fc = new Date(emp.fecha_cese + 'T00:00:00');
                           return fc.getFullYear() === anio && (fc.getMonth() + 1) === mes;
                         })();
@@ -1187,12 +1200,12 @@ function Tareo() {
                           <td 
                             className="tareo-td-emp sticky-col"
                             style={{ 
-                              backgroundColor: tieneCeseEsteMes ? '#fee2e2' : (emp.extras?.dias_acumulados || 0) > 0 ? '#ffd700' : undefined,
-                              borderLeft: tieneCeseEsteMes ? '4px solid #dc2626' : undefined,
+                              backgroundColor: esCesado ? '#fee2e2' : (emp.extras?.dias_acumulados || 0) > 0 ? '#ffd700' : undefined,
+                              borderLeft: esCesado ? '4px solid #dc2626' : undefined,
                               transition: 'background-color 0.3s',
                               cursor: 'pointer',
                             }}
-                            title={`${emp.cargo || 'Sin cargo'} - Sueldo: S/ ${emp.sueldo_base || '0.00'}${tieneCeseEsteMes ? `\n⚠️ CESADO: ${emp.fecha_cese}${emp.motivo_cese ? ' - ' + emp.motivo_cese : ''}` : ''}${(emp.extras?.dias_acumulados || 0) > 0 ? `\nDías acumulados: ${Number(emp.extras?.dias_acumulados || 0).toFixed(1)}` : ''}`}
+                            title={`${emp.cargo || 'Sin cargo'} - Sueldo: S/ ${emp.sueldo_base || '0.00'}${esCesado ? `\n⚠️ CESADO: ${emp.fecha_cese || 'S/F'}${emp.motivo_cese ? ' - ' + emp.motivo_cese : ''}` : ''}${(emp.extras?.dias_acumulados || 0) > 0 ? `\nDías acumulados: ${Number(emp.extras?.dias_acumulados || 0).toFixed(1)}` : ''}`}
                             onDoubleClick={() => {
                               if (!canRegistrarCese) return;
                               setModalCese({
@@ -1210,9 +1223,9 @@ function Tareo() {
                             }}
                           >
                             <span className="emp-code">{emp.codigo}</span>
-                            <span className="emp-name" style={{ color: tieneCeseEsteMes ? '#dc2626' : undefined, fontWeight: tieneCeseEsteMes ? '700' : undefined }}>
+                            <span className="emp-name" style={{ color: esCesado ? '#dc2626' : undefined, fontWeight: esCesado ? '700' : undefined }}>
                               {emp.apellidos}, {emp.nombres}
-                              {tieneCeseEsteMes && <span style={{ fontSize: '0.6rem', marginLeft: '4px', background: '#dc2626', color: '#fff', padding: '1px 4px', borderRadius: '3px' }}>CESADO</span>}
+                              {esCesado && <span style={{ fontSize: '0.6rem', marginLeft: '4px', background: '#dc2626', color: '#fff', padding: '1px 4px', borderRadius: '3px' }}>CESADO</span>}
                             </span>
                           </td>
                         );

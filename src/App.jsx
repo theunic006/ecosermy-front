@@ -39,8 +39,12 @@ const HistorialUsuarios = lazy(() => import('./pages/HistorialUsuarios'));
 const HistorialSistema = lazy(() => import('./pages/HistorialSistema'));
 const Tramas = lazy(() => import('./pages/Tramas'));
 const TramasSCTR = lazy(() => import('./pages/TramasSCTR'));
+const TramasVidaLey = lazy(() => import('./pages/TramasVidaLey'));
 const CambiosPersonal = lazy(() => import('./pages/CambiosPersonal'));
 const ContratosUnidad = lazy(() => import('./pages/ContratosUnidad'));
+const Backups = lazy(() => import('./pages/Backups'));
+const FichaPersonal = lazy(() => import('./pages/FichaPersonal'));
+const SueldosPeriodo = lazy(() => import('./pages/SueldosPeriodo'));
 
 function App() {
   return (
@@ -203,6 +207,26 @@ function App() {
                 <Route path="tramas-sctr" element={
                   <ProtectedRoute requiredPermission="tramas.ver">
                     <Suspense fallback={<Loading />}><TramasSCTR /></Suspense>
+                  </ProtectedRoute>
+                } />
+                <Route path="tramas-vida-ley" element={
+                  <ProtectedRoute requiredPermission="tramas.ver">
+                    <Suspense fallback={<Loading />}><TramasVidaLey /></Suspense>
+                  </ProtectedRoute>
+                } />
+                <Route path="backups" element={
+                  <ProtectedRoute requiredPermission="configuracion.ver">
+                    <Suspense fallback={<Loading />}><Backups /></Suspense>
+                  </ProtectedRoute>
+                } />
+                <Route path="ficha-personal" element={
+                  <ProtectedRoute requiredPermission="ficha_personal.ver">
+                    <Suspense fallback={<Loading />}><FichaPersonal /></Suspense>
+                  </ProtectedRoute>
+                } />
+                <Route path="sueldos-periodo" element={
+                  <ProtectedRoute requiredPermission="planilla.ver">
+                    <Suspense fallback={<Loading />}><SueldosPeriodo /></Suspense>
                   </ProtectedRoute>
                 } />
               </Route>

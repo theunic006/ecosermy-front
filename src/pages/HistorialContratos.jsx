@@ -183,8 +183,8 @@ function HistorialContratos() {
       contrato_inicio: isEditing ? (f.fecha_inicio || contrato.fecha_inicio) : contrato.fecha_inicio,
       contrato_fin:    isEditing ? (f.fecha_fin   || contrato.fecha_fin)    : contrato.fecha_fin,
       sueldo_base:     isEditing
-        ? (parseFloat(f.sueldo_base) || parseFloat(contrato.sueldo) || parseFloat(emp?.sueldo_base) || 0)
-        : (parseFloat(contrato.sueldo) || parseFloat(emp?.sueldo_base) || 0),
+        ? (parseFloat(f.sueldo_base) || parseFloat(emp?.sueldo_base) || 0)
+        : (parseFloat(emp?.sueldo_base) || 0),
       fecha_firma: isEditing ? (f.fecha_firma || contrato.fecha_inicio) : contrato.fecha_inicio,
       hora_inicio: emp?.hora_inicio || '07:00',
       hora_fin: emp?.hora_fin || '19:00',
@@ -247,7 +247,7 @@ function HistorialContratos() {
       descripcion_contrato: emp?.descripcion_contrato || '',
       contrato_inicio: contrato?.fecha_inicio,
       contrato_fin:    contrato?.fecha_fin,
-      sueldo_base: parseFloat(contrato?.sueldo) || parseFloat(emp?.sueldo_base) || 0,
+      sueldo_base: parseFloat(emp?.sueldo_base) || 0,
       fecha_firma:  contrato?.fecha_inicio,
       hora_inicio:  emp?.hora_inicio || '07:00',
       hora_fin:     emp?.hora_fin    || '19:00',
@@ -901,12 +901,17 @@ function HistorialContratos() {
       header: 'Vence el', accessor: 'contrato_fin', width: '135px',
       render: (row) => {
         const dias = row.dias_restantes;
-        const color = dias <= 7 ? '#dc2626' : dias <= 15 ? '#d97706' : '#0284c7';
+        const vencido = dias < 0;
+        const color = vencido ? '#7c3aed' : dias <= 7 ? '#dc2626' : dias <= 15 ? '#d97706' : '#0284c7';
+        const diasAbs = Math.abs(dias);
         return (
           <div>
             <strong style={{ color }}>{formatDate(row.contrato_fin)}</strong><br />
             <small style={{ color, fontSize: '0.75rem', fontWeight: 700 }}>
-              ⏱ {dias} día{dias !== 1 ? 's' : ''} restante{dias !== 1 ? 's' : ''}
+              {vencido
+                ? `⚠ Vencido hace ${diasAbs} día${diasAbs !== 1 ? 's' : ''}`
+                : `⏱ ${dias} día${dias !== 1 ? 's' : ''} restante${dias !== 1 ? 's' : ''}`
+              }
             </small>
           </div>
         );
@@ -934,9 +939,6 @@ function HistorialContratos() {
       header: 'Acciones', width: '195px',
       render: (row) => {
         const est = row.estado_proceso || 'borrador';
-        if (est === 'no_renovado') {
-          return <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>No renovado</span>;
-        }
         return (
           <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
             {hasPermission('contratos.editar') && (
@@ -947,6 +949,7 @@ function HistorialContratos() {
                   style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>
                   <FiRefreshCw size={12} /> Renovar
                 </button>
+                {est !== 'no_renovado' && (
                 <button className="btn-sm"
                   onClick={(e) => { e.stopPropagation(); handleAbrirNoRenovar(row); }}
                   title="No renovar contrato"
@@ -957,6 +960,7 @@ function HistorialContratos() {
                   }}>
                   <FiXCircle size={12} /> No Renovar
                 </button>
+                )}
               </>
             )}
           </div>
@@ -1046,7 +1050,7 @@ function HistorialContratos() {
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626', margin: 0 }}>
-              <FiAlertTriangle /> Contratos que vencen en los próximos 30 días
+              <FiAlertTriangle /> Contratos vencidos o por vencer (próximos 30 días)
             </h4>
             <button className="btn-secondary" onClick={cargarProximosVencer} disabled={loadingProximos}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '0.85rem' }}>
@@ -1056,6 +1060,10 @@ function HistorialContratos() {
 
           {/* Leyenda */}
           <div style={{ display: 'flex', gap: '16px', marginBottom: '14px', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#7c3aed', display: 'inline-block' }} />
+              <strong style={{ color: '#7c3aed' }}>Vencido</strong> (&lt;0 días)
+            </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#dc2626', display: 'inline-block' }} />
               <strong style={{ color: '#dc2626' }}>Crítico</strong> (≤7 días)
@@ -1082,7 +1090,7 @@ function HistorialContratos() {
           ) : proximosVencerFiltrados.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
               <FiAlertTriangle size={40} style={{ opacity: 0.2, display: 'block', margin: '0 auto 12px' }} />
-              <p style={{ fontSize: '1rem' }}>No hay contratos próximos a vencer en los próximos 30 días. ✅</p>
+              <p style={{ fontSize: '1rem' }}>No hay contratos vencidos ni próximos a vencer en los próximos 30 días. ✅</p>
             </div>
           ) : (
             <>

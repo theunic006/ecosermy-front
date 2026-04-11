@@ -1,11 +1,12 @@
 ﻿import { useState, useEffect } from "react";
-import { FiUserX, FiDownload, FiFileText, FiRefreshCw } from "react-icons/fi";
-import { getEmpleadosCesados } from "../services/empleadoService";
+import { FiUserX, FiDownload, FiFileText, FiRefreshCw, FiClock } from "react-icons/fi";
+import { getEmpleadosCesados, getHistorialCeses } from "../services/empleadoService";
 import { getHistorialEmpleado } from "../services/contratoHistorialService";
 import DataTable from "../components/common/DataTable";
 import Loading from "../components/common/Loading";
 import Modal from "../components/common/Modal";
 import { formatDate } from "../utils/helpers";
+import { UNIDADES } from "../utils/constants";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 
@@ -13,7 +14,9 @@ function Cesados() {
   const [cesados, setCesados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [exportandoPDF, setExportandoPDF] = useState(false);
+  const [filtroUnidad, setFiltroUnidad] = useState('');
   const [modalHistorial, setModalHistorial] = useState({ show: false, empleado: null, contratos: [], loading: false });
+  const [modalHistorialCeses, setModalHistorialCeses] = useState({ show: false, empleado: null, historial: [], loading: false });
 
   useEffect(() => { cargarCesados(); }, []);
 
@@ -41,9 +44,20 @@ function Cesados() {
     }
   };
 
+  const verHistorialCeses = async (emp) => {
+    setModalHistorialCeses({ show: true, empleado: emp, historial: [], loading: true });
+    try {
+      const data = await getHistorialCeses(emp.id);
+      setModalHistorialCeses(prev => ({ ...prev, historial: data, loading: false }));
+    } catch {
+      toast.error("Error al cargar historial de ceses");
+      setModalHistorialCeses(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   const exportarExcel = () => {
-    if (cesados.length === 0) { toast.warning("No hay datos para exportar"); return; }
-    const filas = cesados.map((e, i) => ({
+    if (cesadosFiltrados.length === 0) { toast.warning("No hay datos para exportar"); return; }
+    const filas = cesadosFiltrados.map((e, i) => ({
       "N°":              i + 1,
       "Código":          e.codigo_trabajador || "",
       "Apellidos":       e.apellidos || "",
@@ -68,16 +82,17 @@ function Cesados() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Personal Cesado");
     const fecha = new Date().toISOString().split("T")[0];
-    XLSX.writeFile(wb, `personal_cesado_${fecha}.xlsx`);
-    toast.success(`${cesados.length} registros exportados a Excel`);
+    const unidadLabel = filtroUnidad ? `_${filtroUnidad.replace(/\s+/g, '_')}` : '';
+    XLSX.writeFile(wb, `personal_cesado${unidadLabel}_${fecha}.xlsx`);
+    toast.success(`${cesadosFiltrados.length} registros exportados a Excel`);
   };
 
   const exportarPDF = async () => {
-    if (cesados.length === 0) { toast.warning("No hay datos para exportar"); return; }
+    if (cesadosFiltrados.length === 0) { toast.warning("No hay datos para exportar"); return; }
     setExportandoPDF(true);
     try {
       const fecha = new Date().toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" });
-      const filas = cesados.map((e, i) => `
+      const filas = cesadosFiltrados.map((e, i) => `
         <tr style="background:${i % 2 === 0 ? "#fff" : "#f1f5f9"};">
           <td style="padding:5px;text-align:center;border:1px solid #ddd;">${i + 1}</td>
           <td style="padding:5px;border:1px solid #ddd;font-weight:600;color:#1d4ed8;">${e.codigo_trabajador || ""}</td>
@@ -97,8 +112,8 @@ function Cesados() {
         <div style="font-family:Arial,sans-serif;padding:20px;color:#111;">
           <div style="text-align:center;margin-bottom:18px;">
             <div style="font-size:16pt;font-weight:bold;color:#1e3a5f;">ECOSERMY S.A.C.</div>
-            <div style="font-size:13pt;font-weight:bold;margin-top:4px;">REPORTE DE PERSONAL CESADO</div>
-            <div style="font-size:9pt;color:#555;margin-top:4px;">Generado el ${fecha} | Total: ${cesados.length} empleados</div>
+            <div style="font-size:13pt;font-weight:bold;margin-top:4px;">REPORTE DE PERSONAL CESADO${filtroUnidad ? ` — ${filtroUnidad}` : ''}</div>
+            <div style="font-size:9pt;color:#555;margin-top:4px;">Generado el ${fecha} | Total: ${cesadosFiltrados.length} empleados</div>
           </div>
           <table style="width:100%;border-collapse:collapse;font-size:7pt;">
             <thead>
@@ -133,9 +148,10 @@ function Cesados() {
 
       const html2pdf = (await import("html2pdf.js")).default;
       const fechaArchivo = new Date().toISOString().split("T")[0];
+      const unidadLabelPDF = filtroUnidad ? `_${filtroUnidad.replace(/\s+/g, '_')}` : '';
       await html2pdf().set({
         margin:      [8, 8, 8, 8],
-        filename:    `personal_cesado_${fechaArchivo}.pdf`,
+        filename:    `personal_cesado${unidadLabelPDF}_${fechaArchivo}.pdf`,
         image:       { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF:       { unit: "mm", format: "a4", orientation: "landscape" },
@@ -143,7 +159,7 @@ function Cesados() {
       }).from(container).save();
 
       document.body.removeChild(overlay);
-      toast.success(`PDF generado con ${cesados.length} registros`);
+      toast.success(`PDF generado con ${cesadosFiltrados.length} registros`);
     } catch (err) {
       console.error(err);
       toast.error("Error al generar PDF");
@@ -151,6 +167,8 @@ function Cesados() {
       setExportandoPDF(false);
     }
   };
+
+  const cesadosFiltrados = cesados.filter(e => !filtroUnidad || e.unidad === filtroUnidad);
 
   const columns = [
     {
@@ -207,6 +225,20 @@ function Cesados() {
       width: "80px",
     },
     {
+      header: "Hist. Ceses",
+      render: (row) => (
+        <span
+          onClick={() => verHistorialCeses(row)}
+          style={{ cursor: "pointer", color: "#dc2626", fontWeight: 700, textDecoration: "underline", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "4px" }}
+          title="Ver historial de ceses y reactivaciones"
+        >
+          <FiClock size={13} />
+          {row.historial_ceses_count ?? 0}
+        </span>
+      ),
+      width: "95px",
+    },
+    {
       header: "Motivo de Cese",
       accessor: "motivo_cese",
       render: (row) => row.motivo_cese || "-",
@@ -223,22 +255,34 @@ function Cesados() {
           <div>
             <h2>Personal Cesado</h2>
             <small style={{ color: "var(--text-muted)" }}>
-              {cesados.length} empleado{cesados.length !== 1 ? "s" : ""} cesado{cesados.length !== 1 ? "s" : ""}
+              {cesadosFiltrados.length} empleado{cesadosFiltrados.length !== 1 ? "s" : ""} cesado{cesadosFiltrados.length !== 1 ? "s" : ""}
+              {filtroUnidad ? ` — ${filtroUnidad}` : ''}
             </small>
           </div>
         </div>
         <div className="page-actions">
-          <button className="btn-secondary" onClick={exportarExcel} disabled={cesados.length === 0} title="Exportar a Excel">
+          <select
+            className="form-select"
+            value={filtroUnidad}
+            onChange={(e) => setFiltroUnidad(e.target.value)}
+            title="Filtrar por unidad"
+          >
+            <option value="">Todas las unidades</option>
+            {UNIDADES.map(u => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
+          <button className="btn-secondary" onClick={exportarExcel} disabled={cesadosFiltrados.length === 0} title="Exportar a Excel">
             <FiDownload size={15} /> Excel
           </button>
-          <button className="btn-primary" onClick={exportarPDF} disabled={exportandoPDF || cesados.length === 0}
+          <button className="btn-primary" onClick={exportarPDF} disabled={exportandoPDF || cesadosFiltrados.length === 0}
             style={{ background: "#dc2626", borderColor: "#dc2626" }} title="Exportar a PDF">
             <FiFileText size={15} /> {exportandoPDF ? "Generando..." : "PDF"}
           </button>
         </div>
       </div>
 
-      <DataTable columns={columns} data={cesados} searchable pageSize={15} />
+      <DataTable columns={columns} data={cesadosFiltrados} searchable pageSize={15} />
 
       {/* Modal Historial de Contratos */}
       {modalHistorial.show && (
@@ -307,6 +351,104 @@ function Cesados() {
             </div>
             <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setModalHistorial({ show: false, empleado: null, contratos: [], loading: false })}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Historial de Ceses y Reactivaciones */}
+      {modalHistorialCeses.show && (
+        <div className="modal-overlay" onClick={() => setModalHistorialCeses({ show: false, empleado: null, historial: [], loading: false })}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "800px", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+            <div className="modal-header">
+              <h3>🔄 Historial de Ceses y Reactivaciones</h3>
+              <button className="btn-close" onClick={() => setModalHistorialCeses({ show: false, empleado: null, historial: [], loading: false })}>×</button>
+            </div>
+            <div className="modal-body" style={{ overflowY: "auto", flex: 1 }}>
+              <p style={{ fontWeight: 600, marginBottom: "12px", color: "var(--text-primary)" }}>
+                {modalHistorialCeses.empleado?.codigo_trabajador} — {modalHistorialCeses.empleado?.apellidos}, {modalHistorialCeses.empleado?.nombres}
+              </p>
+              <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "16px" }}>
+                <strong>Estado actual:</strong>{" "}
+                <span style={{
+                  padding: "2px 8px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 600,
+                  background: modalHistorialCeses.empleado?.situacion_contractual === "CESADO" ? "#fee2e2" : "#dcfce7",
+                  color: modalHistorialCeses.empleado?.situacion_contractual === "CESADO" ? "#dc2626" : "#16a34a",
+                }}>
+                  {modalHistorialCeses.empleado?.situacion_contractual || "N/A"}
+                </span>
+              </p>
+
+              {modalHistorialCeses.loading ? (
+                <div style={{ textAlign: "center", padding: "30px" }}>Cargando historial...</div>
+              ) : modalHistorialCeses.historial.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "30px", color: "var(--text-muted)" }}>
+                  No hay registros de ceses/reactivaciones en el historial
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {modalHistorialCeses.historial.map((h, i) => (
+                    <div key={h.id} style={{
+                      border: `2px solid ${h.accion === "CESE" ? "#fca5a5" : "#86efac"}`,
+                      borderRadius: "10px",
+                      padding: "12px 16px",
+                      background: h.accion === "CESE" ? "#fef2f2" : "#f0fdf4",
+                      position: "relative",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                        <span style={{
+                          padding: "3px 10px", borderRadius: "999px", fontSize: "0.78rem", fontWeight: 700,
+                          background: h.accion === "CESE" ? "#dc2626" : "#16a34a",
+                          color: "#fff",
+                        }}>
+                          {h.accion === "CESE" ? "⛔ CESE" : "✅ REACTIVACIÓN"}
+                        </span>
+                        <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                          #{modalHistorialCeses.historial.length - i}
+                        </span>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "0.82rem" }}>
+                        {h.accion === "CESE" && (
+                          <>
+                            <div><strong>Fecha de cese:</strong> {formatDate(h.fecha_cese) || "-"}</div>
+                            <div><strong>Motivo:</strong> {h.motivo_cese || "-"}</div>
+                          </>
+                        )}
+                        {h.accion === "REACTIVACION" && (
+                          <>
+                            <div><strong>Fecha reactivación:</strong> {formatDate(h.fecha_reactivacion) || "-"}</div>
+                            <div><strong>Cese previo:</strong> {formatDate(h.fecha_cese) || "-"}</div>
+                            <div><strong>Motivo cese previo:</strong> {h.motivo_cese || "-"}</div>
+                            <div><strong>Motivo reactivación:</strong> {h.motivo_reactivacion || "-"}</div>
+                          </>
+                        )}
+                        <div>
+                          <strong>Situación:</strong>{" "}
+                          <span style={{ color: "#6b7280" }}>{h.situacion_anterior}</span>
+                          {" → "}
+                          <span style={{
+                            fontWeight: 600,
+                            color: h.situacion_nueva === "CESADO" ? "#dc2626" : "#16a34a",
+                          }}>{h.situacion_nueva}</span>
+                        </div>
+                        <div>
+                          <strong>Registrado:</strong>{" "}
+                          <span style={{ color: "#6b7280" }}>
+                            {h.created_at ? new Date(h.created_at).toLocaleString("es-PE") : "-"}
+                            {h.registrado_por?.name ? ` por ${h.registrado_por.name}` : ""}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setModalHistorialCeses({ show: false, empleado: null, historial: [], loading: false })}>
                 Cerrar
               </button>
             </div>
